@@ -7,7 +7,7 @@ theme:
     scheme: slate
     highlightjs: true
     highlightjs_theme: github
-    language: cpp
+    language: en
     toggle:
       icon: material/weather-night
       name: Switch to light mode
