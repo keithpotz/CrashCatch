@@ -30,8 +30,8 @@ nav:
 markdown_extensions:
   - admonition
   - codehilite:
-      guess_lang: false
-      linenums: false
+      guess_lang: true
+      linenums: true
   - toc:
       permalink: true
   - pymdownx.superfences
