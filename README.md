@@ -231,7 +231,7 @@ target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
   GitHub Pages or static `/docs` with setup, usage, API reference
 
 ## 📝 Contributing
-We warmly welcome contributions! Detailed contribution guidelines will soon be added to `CONTRIBUTING.md`.
+We warmly welcome contributions! Check `CONTRIBUTING.md` for more information.
 
 ## 📄 License
 CrashCatch is licensed under the [MIT License](LICENSE.md). You're free to use, modify, and distribute it within your projects.
