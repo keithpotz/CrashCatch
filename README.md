@@ -1,4 +1,3 @@
-
 # CrashCatch
 
 *A cross-platform, efficient, and easy-to-integrate crash-reporting library for modern C++ applications.*
