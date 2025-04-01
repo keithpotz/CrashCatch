@@ -1,5 +1,3 @@
-docs_dir: ./docs
-site_dir: ./gh-pages
 site_name: CrashCatch
 site_url: https://keithpotz.github.io/CrashCatch
 repo_url: https://github.com/keithpotz/CrashCatch
@@ -20,9 +18,6 @@ theme:
     - toc.integrate
     - content.code.copy
     - content.action.edit
-  highlightjs: true
-  language: en
-  highlightjs_theme: github
 
 nav:
   - Home: index.md
