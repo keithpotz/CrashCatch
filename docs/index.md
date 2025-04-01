@@ -93,10 +93,10 @@ Explore working examples in the GitHub repo:
 
 ## 📸 Screenshots
 
-![ZeroConfig](../examples/screenshots/ZeroConfig.png)
-![OneLiner](../examples/screenshots/OneLiner.png)
-![FullConfig](../examples/screenshots/FullConfig1.png)
-![CrashDialog](../examples/screenshots/screen1.png)
+![ZeroConfig](../img/ZeroConfig.png)
+![OneLiner](../img/OneLiner.png)
+![FullConfig](../img/FullConfig1.png)
+![CrashDialog](../img/screen1.png)
 
 ---
 
