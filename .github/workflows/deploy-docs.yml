@@ -18,10 +18,20 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install MkDocs and theme
+      - name: Install MkDocs, theme, and mike
         run: |
-          pip install mkdocs mkdocs-material
+          pip install mkdocs mkdocs-material mike
 
-      - name: Deploy Docs
+      - name: Deploy Docs with mike (Versioned)
         run: |
-          mkdocs gh-deploy --force
+          # Deploy version 1.0.0 docs and set 'latest' as default
+          mike deploy 1.0.0 latest
+          mike set-default latest
+
+      - name: Commit versioned docs to gh-pages
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+          git add -A
+          git commit -m "Deploy versioned docs"
+          git push origin gh-pages
