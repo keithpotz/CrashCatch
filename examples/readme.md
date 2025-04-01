@@ -28,7 +28,4 @@ Build any file in Visual Studio, g++, or another C++ IDE.
 ![Full Config Log](screenshots/FullConfig2.png)
 
 ### 🧵 Thread Crash Example
-![Thread Crash](screenshots/ThreadCrash.png)
-
-### 📋 GUI Dialog (With Cleanup)
-![Crash Dialog](screenshots/CleanupDialog.png)
+![Thread Crash](screenshots/Thread1.png)
