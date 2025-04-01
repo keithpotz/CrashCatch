@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout the main branch (for mkdocs.yml)
+      - name: Checkout main branch
         uses: actions/checkout@v3
         with:
-          ref: main  # Checkout main branch to access mkdocs.yml
+          ref: main  # Ensure we're on the main branch for mkdocs.yml
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -29,21 +29,26 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "GitHub Actions"
 
-      - name: Pull latest gh-pages changes
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v3
+        with:
+          ref: gh-pages
+          path: gh-pages  # Checkout to a different directory to avoid overwriting files
+
+      - name: Copy mkdocs.yml from main to gh-pages directory
         run: |
-          git fetch origin gh-pages
-          git checkout gh-pages
-          git pull origin gh-pages
+          cp ./mkdocs.yml ./gh-pages/mkdocs.yml  # Copy the mkdocs.yml file to gh-pages
 
       - name: Deploy Docs with mike (Versioned)
         run: |
           # Ensure mkdocs.yml is in the correct location
-          ls -al  # List files in the repository to check mkdocs.yml location
-          mike deploy 1.0.0 latest --config-file ./mkdocs.yml
+          ls -al ./gh-pages  # List files to check mkdocs.yml location in gh-pages
+          mike deploy 1.0.0 latest --config-file ./gh-pages/mkdocs.yml
           mike set-default latest
 
       - name: Commit versioned docs to gh-pages
         run: |
+          cd gh-pages
           git add -A
           git commit -m "Deploy versioned docs"
           git push origin gh-pages
