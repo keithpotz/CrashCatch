@@ -6,6 +6,9 @@ theme:
   name: material
   palette:
     scheme: slate
+    highlightjs: true
+    highlightjs_theme: github
+    language: cpp
     toggle:
       icon: material/weather-night
       name: Switch to light mode
