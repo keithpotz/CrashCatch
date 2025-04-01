@@ -1,20 +1,24 @@
 # CrashCatch
 
-_A lightweight, single-header C++ crash reporting library for modern applications._
-
----
+💥 _A modern, single-header crash reporting library for C++ on Windows._
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Header-only](https://img.shields.io/badge/Header--only-yes-green)
+![Header-only](https://img.shields.io/badge/Header--only-yes-brightgreen)
 ![Platform](https://img.shields.io/badge/Platform-Windows-lightblue)
-
-CrashCatch lets you add crash reporting to your C++ app in under 10 seconds.
+![C++17](https://img.shields.io/badge/C%2B%2B-17%2B-blue)
+![CI](https://github.com/keithpotz/CrashCatch/actions/workflows/build.yml/badge.svg)
 
 ---
 
-## 🚀 Quick Start
+## 🚀 What is CrashCatch?
+CrashCatch is a zero-dependency, header-only crash reporting library for C++ applications. 
+It captures crashes, generates `.dmp` and `.txt` files, includes stack traces, and can show a GUI-friendly message box — all from a single include.
 
-### 🟢 Zero Config (Auto-init)
+---
+
+## ⚡ Quick Start
+
+### Zero Config (Auto-init)
 ```cpp
 #define CRASHCATCH_AUTO_INIT
 #include "CrashCatch.hpp"
@@ -25,19 +29,18 @@ int main() {
 }
 ```
 
-### 🟡 One-Liner
+### One-Liner Setup
 ```cpp
 #include "CrashCatch.hpp"
 
 int main() {
     CrashCatch::enable();
-
     int* ptr = nullptr;
     *ptr = 42;
 }
 ```
 
-### 🔧 Full Config
+### Full Config Example
 ```cpp
 #include "CrashCatch.hpp"
 
@@ -45,7 +48,7 @@ int main() {
     CrashCatch::Config config;
     config.appVersion = "1.0.0";
     config.buildConfig = "Release";
-    config.additionalNotes = "Beta test build";
+    config.additionalNotes = "Test build";
     config.showCrashDialog = true;
     config.onCrash = [] {
         std::cout << "Cleaning up before crash...\n";
@@ -60,46 +63,57 @@ int main() {
 
 ---
 
-## 📄 What Happens On Crash?
+## 📦 Installing with CMake
 
-CrashCatch will generate:
-- `.dmp` file with MiniDumpWriteDump (viewable in WinDbg)
-- `.txt` file with stack trace + diagnostics
+```bash
+mkdir build && cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=./install
+cmake --build . --target install
+```
 
-Everything goes into `./crash_dumps/` by default.
+Then in another project:
+```cmake
+find_package(CrashCatch REQUIRED)
+target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
+```
 
 ---
 
 ## 🧪 Examples
+Explore working examples in the GitHub repo:
+- ZeroConfig
+- OneLiner
+- FullConfig
+- ThreadCrash
+- DivideByZero
 
-Real examples are available in the [examples folder](../examples/):
-- Zero Config
-- One Liner
-- Full Config + Dialog
-- Background Thread Crash
-- Divide By Zero
-
----
-
-## 📦 Installation
-
-You only need **one file**:
-
-```text
-include/CrashCatch.hpp
-```
-
-No libraries to link. No build steps. Just `#include` and go.
+[View Examples Folder](../examples/)
 
 ---
 
-## 🔗 Resources
+## 📸 Screenshots
 
-- [GitHub Repository](https://github.com/yourusername/CrashCatch)
-- [README + Roadmap](../README.md)
-- [License](../LICENSE.md)
+![ZeroConfig](../examples/screenshots/ZeroConfig.png)
+![OneLiner](../examples/screenshots/OneLiner.png)
+![FullConfig](../examples/screenshots/FullConfig1.png)
+![CrashDialog](../examples/screenshots/screen1.png)
 
 ---
+
+## 🛠 Features
+- ✅ Header-only — drop-in, no dependencies
+- ✅ `.dmp` and `.txt` crash logs
+- ✅ Symbol resolution for stack trace
+- ✅ GUI message box support
+- ✅ CMake + CI friendly
+- 🔜 Linux/macOS and remote reporting coming soon
+
+---
+
+## 📄 License
+MIT License — created and maintained by **Keith Pottratz**  
+[GitHub Repo](https://github.com/keithpotz/CrashCatch)
+
 
 Created by **Keith Pottratz**  
 MIT Licensed
