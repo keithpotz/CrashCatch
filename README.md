@@ -8,6 +8,8 @@
 ![C++](https://img.shields.io/badge/C++-17%2B-blue)
 ![Crash Dumps](https://img.shields.io/badge/Dump-.dmp%2C%20.txt-orange)
 ![Single Header](https://img.shields.io/badge/Single--header-✔️-green)
+![CI](https://github.com/keithpotz/CrashCatch/actions/workflows/build.yml/badge.svg)
+
 
 CrashCatch is a lightweight, single-header C++ crash-reporting library for generating `.dmp` and `.txt` crash logs — complete with stack traces, diagnostics, optional cleanup hooks, and user dialogs.
 

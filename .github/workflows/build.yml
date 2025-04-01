@@ -1,0 +1,28 @@
+name: Build Examples 
+
+on:
+  push:
+    paths:
+      - 'examples/**'
+      - 'include/**'
+      - '.github/workflows/**'
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        cpp: [17, 20]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Build all example files
+      run: |
+        cl /std:c++${{ matrix.cpp }} /EHsc /Iinclude examples\*.cpp
