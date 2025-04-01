@@ -130,6 +130,7 @@ Architecture: x64
 Executable: C:\Path\To\YourApp.exe
 Uptime (s): 182
 Notes: Test build
+```
 
 ### The .txt files contains:
 - **Timestamp**: The time the crash occurred.
