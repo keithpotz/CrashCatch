@@ -21,9 +21,9 @@ We follow a simple process for contributions:
     git checkout -b your-branch-name
     ```
 4. **Make Your Changes**:
- - Write code or modifyy documentation as needed.
- - Ensure your changes follow the project's coding standards and guidelines.
- - If you are adding a new feature or fixing a bug, please add unit tests or modify exisitn gone where appropriate.
+ * Write code or modifyy documentation as needed.
+ * Ensure your changes follow the project's coding standards and guidelines.
+ * If you are adding a new feature or fixing a bug, please add unit tests or modify exisitn gone where appropriate.
 5. **Commit Your Changes**:
     Commit your changes with a clear and concise commit message. Use the following format:
     ```bash
@@ -36,27 +36,28 @@ We follow a simple process for contributions:
     git push origin your-branch-name
     ```
 7. **Create a Pull Request**:
--Once you've pushed your changes, go to the original repository and create a pull request from your fork. Be sure to:
--Provide a description of the changes you've made.
--Reference any relevant issues (e.g., Fixes #123).
--Ensure that your changes pass any automated tests before submitting.
+ * Once you've pushed your changes, go to the original repository and create a pull request from your fork. Be sure to:
+ * Provide a description of the changes you've made.
+ * Reference any relevant issues (e.g., Fixes #123).
+ * Ensure that your changes pass any automated tests before submitting.
 
 ## Coding Style
 We strive for consistency in our codebase. Here are a few key points to keep in mind.
-    - Use camelCase for variable and fucntion names
-    - Use 4 spaces for indentation, not tabs.
-    - Add comments to explain complex logic or any important assumptions in the code.
+ + Use camelCase for variable and fucntion names
+ + Use 4 spaces for indentation, not tabs.
+ + Add comments to explain complex logic or any important assumptions in the code.
 
 ## Documentation
 If you are contributing to the documentation, please ensure that:
-    - the text is clear and easy to understand.
-    - You follow the format used in other documentation files. 
-    - You verify that all links and code samples are correct.
+ + The text is clear and easy to understand.
+ + You follow the format used in other documentation files. 
+ + You verify that all links and code samples are correct.
 
 ## Testing
 We rely on automated tests to ensure the quality of the coddebase. If you are submitting a bug fix or a new feature:
-    - Please add or update tests to cover your changes.
-    - Ensure that all existing tests pass by running:
+  + Please add or update tests to cover your changes.
+  + Ensure that all existing tests pass by running:
+    
     ```bash
     #For C++;
     make test
