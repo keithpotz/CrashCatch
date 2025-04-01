@@ -227,7 +227,7 @@ target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
 - [ ] **Auto-Open Crash Log**  
   Developer mode option to open `.txt` in Notepad after crash
 
-- [ ] **Full Documentation Site**  
+- [ ] **Full Documentation Site**  (In progress)
   GitHub Pages or static `/docs` with setup, usage, API reference
 
 ## 📝 Contributing
