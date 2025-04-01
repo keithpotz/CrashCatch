@@ -12,3 +12,23 @@ This folder contains real-world examples of how to use CrashCatch.
 
 To run:  
 Build any file in Visual Studio, g++, or another C++ IDE.
+---
+## 📸 Example Outputs
+
+### 🟢 Zero Config Mode
+![Zero Config](screenshots/ZeroConfig.png)
+
+### 🟡 One-Liner Init
+![One Liner](screenshots/OneLiner.png)
+
+### 🔧 Full Config - Console Output
+![Full Config Console](screenshots/FullConfig1.png)
+
+### 🔧 Full Config - Crash Log
+![Full Config Log](screenshots/FullConfig2.png)
+
+### 🧵 Thread Crash Example
+![Thread Crash](screenshots/ThreadCrash.png)
+
+### 📋 GUI Dialog (With Cleanup)
+![Crash Dialog](screenshots/CleanupDialog.png)
