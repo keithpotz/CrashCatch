@@ -25,7 +25,7 @@ Build any file in Visual Studio, g++, or another C++ IDE.
 ![Full Config Console](screenshots/FullConfig1.png)
 
 ### 🔧 Full Config - Crash Log
-![Full Config Log](screenshots/FullConfig2.png)
+![Full Config Log](screenshots/FullConfig.png)
 
 ### 🧵 Thread Crash Example
 ![Thread Crash](screenshots/Thread1.png)
