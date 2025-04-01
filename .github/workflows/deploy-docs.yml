@@ -22,6 +22,11 @@ jobs:
         run: |
           pip install mkdocs mkdocs-material mike
 
+      - name: Set up Git User
+        run: | 
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+
       - name: Deploy Docs with mike (Versioned)
         run: |
           # Deploy version 1.0.0 docs and set 'latest' as default
@@ -30,8 +35,6 @@ jobs:
 
       - name: Commit versioned docs to gh-pages
         run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "GitHub Actions"
           git add -A
           git commit -m "Deploy versioned docs"
           git push origin gh-pages
