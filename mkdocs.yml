@@ -1,14 +1,11 @@
 site_name: CrashCatch
 site_url: https://keithpotz.github.io/CrashCatch
 repo_url: https://github.com/keithpotz/CrashCatch
+
 theme:
-  theme:
   name: material
   palette:
     scheme: slate
-    highlightjs: true
-    highlightjs_theme: github
-    language: cpp
     toggle:
       icon: material/weather-night
       name: Switch to light mode
@@ -19,7 +16,10 @@ theme:
     - toc.integrate
     - content.code.copy
     - content.action.edit
- 
+  highlightjs: true
+  language: cpp
+  highlightjs_theme: github
+
 nav:
   - Home: index.md
   - Quick Start: quickstart.md
@@ -27,3 +27,14 @@ nav:
   - Examples: examples.md
   - Screenshots: screenshots.md
   - License: license.md
+
+markdown_extensions:
+  - admonition
+  - codehilite:
+      guess_lang: false
+      linenums: false
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
