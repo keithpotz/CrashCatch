@@ -1,3 +1,4 @@
+docs_dir: ./docs
 site_name: CrashCatch
 site_url: https://keithpotz.github.io/CrashCatch
 repo_url: https://github.com/keithpotz/CrashCatch
@@ -17,6 +18,7 @@ theme:
     - content.code.copy
     - content.action.edit
   highlightjs: true
+  hightlightjs_theme: github
   language: en
   highlightjs_theme: github
 
