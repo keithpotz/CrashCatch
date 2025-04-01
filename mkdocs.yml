@@ -17,7 +17,7 @@ theme:
     - content.code.copy
     - content.action.edit
   highlightjs: true
-  language: cpp
+  language: en
   highlightjs_theme: github
 
 nav:
