@@ -178,9 +178,20 @@ CrashCatch is actively being developed with the goal of becoming a robust, cross
 - [x] Optional message box (GUI-friendly)
 - [x] `onCrash` callback hook for cleanup
 - [x] Configurable output folder, filename, and formatting
+- [x] Added CMake Support
 
 ---
+## 📦 CMake Integration
 
+You can install CrashCatch with:
+
+```bash
+cmake -Bbuild -DCMAKE_INSTALL_PREFIX=install
+cmake --build build --target install
+find_package(CrashCatch REQUIRED)
+target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
+```
+---
 ### 🔜 Planned
 
 - [ ] **Cross-Platform Support**  
