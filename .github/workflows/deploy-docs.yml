@@ -39,7 +39,7 @@ jobs:
            pwd
            ls -al # List files in the repository to check mkdocs.yml location
            # Deploy version 1.0.0 docs and set 'latest' as default
-           mike deploy 1.0.0 latest --config-file ./mkdocs.yml
+           mike deploy 1.0.0 latest --config-file /home/runner/work/CrashCatch/CrashCatch/mkdocs.yml
            mike set-default latest
 
       - name: Commit versioned docs to gh-pages
