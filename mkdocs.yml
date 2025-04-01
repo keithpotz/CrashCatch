@@ -1,0 +1,12 @@
+site_name: CrashCatch
+site_url: https://keithpotz.github.io/CrashCatch
+repo_url: https://github.com/keithpotz/CrashCatch
+theme:
+  name: readthedocs
+nav:
+  - Home: index.md
+  - Quick Start: quickstart.md
+  - CMake Integration: cmake.md
+  - Examples: examples.md
+  - Screenshots: screenshots.md
+  - License: license.md
