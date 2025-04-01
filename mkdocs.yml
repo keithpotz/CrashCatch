@@ -5,10 +5,10 @@ theme:
   name: material
   palette:
     scheme: slate
-    highlightjs: true
-    highlightjs_theme: github
-    language: en
-    toggle:
+  highlightjs: true
+  highlightjs_theme: github
+  language: en
+  toggle:
       icon: material/weather-night
       name: Switch to light mode
   features:
