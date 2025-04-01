@@ -1,4 +1,5 @@
-docs_dir: docs
+docs_dir: ./docs
+site_dir: ./gh-pages
 site_name: CrashCatch
 site_url: https://keithpotz.github.io/CrashCatch
 repo_url: https://github.com/keithpotz/CrashCatch
