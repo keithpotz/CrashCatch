@@ -5,6 +5,9 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Header-only](https://img.shields.io/badge/Header--only-yes-green)
 ![Platform](https://img.shields.io/badge/Platform-Windows-lightblue)
+![C++](https://img.shields.io/badge/C++-17%2B-blue)
+![Crash Dumps](https://img.shields.io/badge/Dump-.dmp%2C%20.txt-orange)
+![Single Header](https://img.shields.io/badge/Single--header-✔️-green)
 
 CrashCatch is a lightweight, single-header C++ crash-reporting library for generating `.dmp` and `.txt` crash logs — complete with stack traces, diagnostics, optional cleanup hooks, and user dialogs.
 
