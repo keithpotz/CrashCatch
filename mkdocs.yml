@@ -2,7 +2,21 @@ site_name: CrashCatch
 site_url: https://keithpotz.github.io/CrashCatch
 repo_url: https://github.com/keithpotz/CrashCatch
 theme:
-  name: readthedocs
+  theme:
+  name: material
+  palette:
+    scheme: slate
+    toggle:
+      icon: material/weather-night
+      name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.top
+    - navigation.sections
+    - toc.integrate
+    - content.code.copy
+    - content.action.edit
+ 
 nav:
   - Home: index.md
   - Quick Start: quickstart.md
