@@ -48,6 +48,17 @@ CrashCatch/
 ---
 
 ## 🔧 Installation
+CrashCatch is 100% header-only.
+
+To integrate:
+
+1. Copy `include/CrashCatch.hpp` into your project
+2. Add `#include "CrashCatch.hpp"` in your code
+3. (Optional) Use `CrashCatch::enable()` or the `CRASHCATCH_AUTO_INIT` macro
+
+> ✅ No build steps.  
+> ❌ No `.lib`, `.dll`, or `.so`.  
+> 🔒 Just one `.hpp` file, ready to use.
 
 Copy `CrashCatch.hpp` into your project and include it:
 
