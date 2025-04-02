@@ -38,3 +38,17 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.highlight:
       anchor_linenums: true
+
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/keithpotz/CrashCatch
+      name: CrashCatch on GitHub
+      badges:
+        - image: https://img.shields.io/github/stars/keithpotz/CrashCatch?style=social
+          link: https://github.com/keithpotz/CrashCatch/stargazers
+          name: GitHub Stars
+        - image: https://img.shields.io/github/forks/keithpotz/CrashCatch?style=social
+          link: https://github.com/keithpotz/CrashCatch/network/members
+          name: GitHub Forks
