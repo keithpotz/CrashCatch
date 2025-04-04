@@ -17,7 +17,7 @@ CrashCatch is a lightweight, single-header C++ crash-reporting library for gener
 
 ## 🎯 Overview
 
-CrashCatch provides simple yet powerful crash-reporting and diagnostics for C++ applications across Windows, Linux, and macOS. Spend less time tracking down bugs and more time developing great software.
+CrashCatch provides simple and powerful crash diagnostics for C++ applications on **Windows and Linux**, with macOS support planned. Whether you're building GUI apps, system tools, or CLI utilities, CrashCatch helps you catch and log critical failures with minimal setup.
 
 The current version supports Windows and uses MiniDumpWriteDump to generate crash reports. Linux and macOS support are planned.
 
@@ -28,13 +28,25 @@ The current version supports Windows and uses MiniDumpWriteDump to generate cras
 - ✅ Cross-platform design: Windows (available), Linux/macOS (planned)
 - 🔹 Single-header C++ integration
 - 💥 Stack trace on unhandled exceptions
+- 💥 **Signal/Exception Capture** – Handles `SIGSEGV`, `SIGABRT`, `SIGFPE` (Linux), unhandled exceptions (Windows)
 - 🧠 Automatic `.dmp` + `.txt` crash report generation
+- 🔍 **Symbol Resolution** – Demangled symbol output (Linux), top frame names (Windows)
 - 📋 Self-diagnostics in plain-text (version, uptime, config, etc.)
 - 🧼 Minimal setup: drop-in header or one-liner initialization
 - ⚙️ Configurable: version tagging, notes, message box, cleanup
 - 🛡️ Future-ready: secure upload, anonymization, viewer app
 - 🧪 Debug & release support
 - 🧵 Symbol resolution for top stack frames (x86 / x64 aware)
+
+---
+---
+## ✅ Supported Platforms
+
+| OS      | Supported | Crash Handling Method   |
+|---------|-----------|--------------------------|
+| Windows | ✅ Yes    | `SetUnhandledExceptionFilter` + MiniDump |
+| Linux   | ✅ Yes    | POSIX signals (`signal()`) + backtrace |
+| macOS   | 🚧 Planned | POSIX + Mach exceptions |
 
 ---
 
@@ -60,6 +72,7 @@ To integrate:
 1. Copy `include/CrashCatch.hpp` into your project
 2. Add `#include "CrashCatch.hpp"` in your code
 3. (Optional) Use `CrashCatch::enable()` or the `CRASHCATCH_AUTO_INIT` macro
+4. For Linux inlcude `-ldl` or `-rdynamic` for deeper Linux symbole resolution if desired
 
 > ✅ No build steps.  
 > ❌ No `.lib`, `.dll`, or `.so`.  
@@ -123,7 +136,7 @@ When a crash occurs, CrashCatch generates the following files in the `./crash_du
 ### 📋 Example `.txt` Includes:
 
 ```text
-Crash Report
+Crash Report (Windows)
 ============
 
 Timestamp: 2025-04-01_14-23-56
@@ -146,6 +159,24 @@ Architecture: x64
 Executable: C:\Path\To\YourApp.exe
 Uptime (s): 182
 Notes: Test build
+```
+```text
+Crash Report (Linux)
+============
+Timestamp: 2025-04-04_15-42-18
+Signal: Segmentation fault (11)
+
+Stack Trace:
+  [0]: ./CrashCatchTest(+0x1234)
+  [1]: libc.so.6(+0xdeadbeef)
+  [2]: start_thread
+  [3]: __libc_start_main
+
+Environment Info:
+App Version: 1.1.0
+Build Config: Release
+Platform: Linux
+Executable: /home/user/CrashCatchTest
 ```
 
 ### The .txt files contains:
@@ -171,6 +202,7 @@ CrashCatch is actively being developed with the goal of becoming a robust, cross
 ### ✅ Completed
 
 - [x] Initial Windows prototype with `.dmp` and `.txt` support
+- [x] Linux POSIX signal handling
 - [x] One-liner setup (`CrashCatch::enable()`)
 - [x] Macro-based auto-initialization (`CRASHCATCH_AUTO_INIT`)
 - [x] Stack trace generation (x86 / x64 aware)
