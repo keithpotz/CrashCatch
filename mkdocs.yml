@@ -22,6 +22,7 @@ theme:
 nav:
   - Home: index.md
   - Quick Start: quickstart.md
+  - Linux Support: linux.md
   - CMake Integration: cmake.md
   - Examples: examples.md
   - Screenshots: screenshots.md

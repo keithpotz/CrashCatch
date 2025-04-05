@@ -1,20 +1,34 @@
 # CrashCatch
 
-💥 _A modern, single-header crash reporting library for C++ on Windows._
+💥 _A modern, single-header crash reporting library for C++ on Windows and Linux._
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Header-only](https://img.shields.io/badge/Header--only-yes-brightgreen)
-![Platform](https://img.shields.io/badge/Platform-Windows-lightblue)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightblue)
 ![C++17](https://img.shields.io/badge/C%2B%2B-17%2B-blue)
 ![CI](https://github.com/keithpotz/CrashCatch/actions/workflows/build.yml/badge.svg)
 
 ---
 
 ## 🚀 What is CrashCatch?
-CrashCatch is a zero-dependency, header-only crash reporting library for C++ applications. 
-It captures crashes, generates `.dmp` and `.txt` files, includes stack traces, and can show a GUI-friendly message box — all from a single include.
+CrashCatch is a zero-dependency, header-only crash reporting library for C++ applications.  
+It captures crashes, generates `.dmp` (Windows) or `.txt` (Windows and Linux) files, includes stack traces, and optionally shows a GUI-friendly message box — all from a single header.
+* Works great in embedded systems, CLI tools, and GUI apps alike.
+
+
+As of **v1.1.0**, CrashCatch supports both **Windows** and **Linux** out of the box.
+---
+
+## ✅ Supported Platforms
+
+| OS      | Supported | Crash Handling Method   |
+|---------|-----------|--------------------------|
+| Windows | ✅ Yes    | `SetUnhandledExceptionFilter` + MiniDump |
+| Linux   | ✅ Yes    | POSIX signals (`signal()`) + backtrace |
+| macOS   | 🚧 Planned | POSIX + Mach exceptions
 
 ---
+
 
 ## ⚡ Quick Start
 
@@ -46,7 +60,7 @@ int main() {
 
 int main() {
     CrashCatch::Config config;
-    config.appVersion = "1.0.0";
+    config.appVersion = "1.1.0";
     config.buildConfig = "Release";
     config.additionalNotes = "Test build";
     config.showCrashDialog = true;
@@ -102,11 +116,13 @@ Explore working examples in the GitHub repo:
 
 ## 🛠 Features
 - ✅ Header-only — drop-in, no dependencies
-- ✅ `.dmp` and `.txt` crash logs
+- ✅ Windows `.dmp` and `.txt` crash logs
+- ✅ Linux .txt logs with stack trace and signal info
+- ✅ Thread safety
 - ✅ Symbol resolution for stack trace
-- ✅ GUI message box support
+- ✅ GUI message box support (Windows)
 - ✅ CMake + CI friendly
-- 🔜 Linux/macOS and remote reporting coming soon
+- 🔜 macOS and remote reporting coming soon
 
 ---
 
