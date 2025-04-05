@@ -4,7 +4,7 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Header-only](https://img.shields.io/badge/Header--only-yes-green)
-![Platform](https://img.shields.io/badge/Platform-Windows-lightblue)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightblue)
 ![C++](https://img.shields.io/badge/C++-17%2B-blue)
 ![Crash Dumps](https://img.shields.io/badge/Dump-.dmp%2C%20.txt-orange)
 ![Single Header](https://img.shields.io/badge/Single--header-✔️-green)
