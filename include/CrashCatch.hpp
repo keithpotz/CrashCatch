@@ -35,13 +35,13 @@ License: MIT
 namespace CrashCatch {
     // Config structure to customize CrashCatch behaviour
     struct Config {
-		std::string dumpFolder = "./crash_dumps/"; // Default folder for crash dumps
-		std::string dumpFileName = "crash"; // Default file name for crash dumps
-		bool enableTextLog = true; // Enable text log for crash dumps
-		bool autoTimestamp = true; // Automatically append timestamp to dump file name
-        bool showCrashDialog = false; // Windows only
-		std::function<void()> onCrash = nullptr; // Callback function to execute on crash
-		std::string appVersion = "unknown"; // Application version
+		std::string dumpFolder = "./crash_dumps/"; 	// Default folder for crash dumps
+		std::string dumpFileName = "crash"; 		// Default file name for crash dumps
+		bool enableTextLog = true; 			// Enable text log for crash dumps
+		bool autoTimestamp = true; 			// Automatically append timestamp to dump file name
+        bool showCrashDialog = false; 				// Windows only
+		std::function<void()> onCrash = nullptr; 	// Callback function to execute on crash
+		std::string appVersion = "unknown";	 	// Application version
         std::string buildConfig = 
 #ifdef _DEBUG
             "Debug";
