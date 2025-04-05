@@ -19,7 +19,9 @@ CrashCatch is a lightweight, single-header C++ crash-reporting library for gener
 
 CrashCatch provides simple and powerful crash diagnostics for C++ applications on **Windows and Linux**, with macOS support planned. Whether you're building GUI apps, system tools, or CLI utilities, CrashCatch helps you catch and log critical failures with minimal setup.
 
-The current version supports Windows and uses MiniDumpWriteDump to generate crash reports. Linux and macOS support are planned.
+CrashCatch currently supports **Windows** (via `MiniDumpWriteDump`) and **Linux** (via POSIX signals and `backtrace()`) for generating crash reports.  
+**macOS support** is planned for a future release.
+
 
 ---
 
