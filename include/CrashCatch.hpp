@@ -21,7 +21,7 @@ License: MIT
 #define CRASHCATCH_PLATFORM_WINDOWS
 #include <Windows.h>
 #include <DbgHelp.h>
-#pragma comment(lib, "DbgHelp.lib")
+#pragma comment(lib, "DbgHelp.lib") //Auto-link debugging support library
 #elif defined(__linux__)
 #define CRASHCATCH_PLATFORM_LINUX
 #include <signal.h>
@@ -33,26 +33,26 @@ License: MIT
 #endif
 
 namespace CrashCatch {
-
+    // Config structure to customize CrashCatch behaviour
     struct Config {
-        std::string dumpFolder = "./crash_dumps/";
-        std::string dumpFileName = "crash";
-        bool enableTextLog = true;
-        bool autoTimestamp = true;
+		std::string dumpFolder = "./crash_dumps/"; // Default folder for crash dumps
+		std::string dumpFileName = "crash"; // Default file name for crash dumps
+		bool enableTextLog = true; // Enable text log for crash dumps
+		bool autoTimestamp = true; // Automatically append timestamp to dump file name
         bool showCrashDialog = false; // Windows only
-        std::function<void()> onCrash = nullptr;
-        std::string appVersion = "unknown";
-        std::string buildConfig =
+		std::function<void()> onCrash = nullptr; // Callback function to execute on crash
+		std::string appVersion = "unknown"; // Application version
+        std::string buildConfig = 
 #ifdef _DEBUG
             "Debug";
 #else
             "Release";
 #endif
-        std::string additionalNotes = "";
+		std::string additionalNotes = "";  // Additional notes to include in the crash log
     };
 
-    inline Config globalConfig;
-
+	inline Config globalConfig; // Global configuration object used internally
+    // Utility: Generate a timestamp string
     inline std::string getTimestamp() {
         auto now = std::chrono::system_clock::now();
         auto time = std::chrono::system_clock::to_time_t(now);
@@ -87,7 +87,7 @@ namespace CrashCatch {
         return result;
     }
 #endif
-
+	// Collect Diagnositcs for crash log (version, build config, platform, executable path)
     inline std::string getDiagnosticsInfo() {
         std::stringstream ss;
         ss << "App Version: " << globalConfig.appVersion << "\n";
@@ -103,13 +103,15 @@ namespace CrashCatch {
         }
         return ss.str();
     }
-
+    // Write Crash summary .txt file
     inline void writeCrashLog(const std::string& logPath, const std::string& timestamp, int signal = 0) {
         std::ofstream log(logPath);
         if (!log.is_open()) return;
 
         log << "Crash Report\n============\n";
+
 #ifdef CRASHCATCH_PLATFORM_LINUX
+        // Stack trace for Linux
         log << "Signal: " << strsignal(signal) << " (" << signal << ")\n";
 #endif
         log << "Timestamp: " << (timestamp.empty() ? "N/A" : timestamp) << "\n\n";
@@ -132,6 +134,7 @@ namespace CrashCatch {
     }
 
 #ifdef CRASHCATCH_PLATFORM_WINDOWS
+	// Windows-specific crash handler
     inline LONG WINAPI UnhandledExceptionHandler(EXCEPTION_POINTERS* ep) {
         if (globalConfig.onCrash) globalConfig.onCrash();
         std::filesystem::create_directories(globalConfig.dumpFolder);
@@ -160,6 +163,7 @@ namespace CrashCatch {
 #endif
 
 #ifdef CRASHCATCH_PLATFORM_LINUX
+	//Linux signal handler: creates .txt crash log with stack trace
     inline void linuxSignalHandler(int signum) {
         if (globalConfig.onCrash) globalConfig.onCrash();
         std::filesystem::create_directories(globalConfig.dumpFolder);
@@ -167,24 +171,27 @@ namespace CrashCatch {
         std::string base = globalConfig.dumpFileName + (timestamp.empty() ? "" : ("_" + timestamp));
         std::string logPath = globalConfig.dumpFolder + base + ".txt";
         writeCrashLog(logPath, timestamp, signum);
-        _exit(1);
+		_exit(1); // Exit immediately after handling signal
     }
 #endif
-
+	//Main initialization function: sets up the crash handler
     inline bool initialize(const Config& config = Config()) {
         globalConfig = config;
 #ifdef CRASHCATCH_PLATFORM_WINDOWS
         SetUnhandledExceptionFilter(UnhandledExceptionHandler);
 #elif defined(CRASHCATCH_PLATFORM_LINUX)
-        signal(SIGSEGV, linuxSignalHandler);
-        signal(SIGABRT, linuxSignalHandler);
-        signal(SIGFPE, linuxSignalHandler);
+		signal(SIGSEGV, linuxSignalHandler); // Segmentation fault
+		signal(SIGABRT, linuxSignalHandler); // Abort signal
+		signal(SIGFPE, linuxSignalHandler); // Floating point exception
+		signal(SIGILL, linuxSignalHandler); // Illegal instruction
+		signal(SIGBUS, linuxSignalHandler); // Misaligned memory address
 #endif
         return true;
     }
-
+	//One liner to enable crash handling with default config
     inline bool enable() { return initialize(Config{}); }
-
+    
+    //Optional Auto enable crash handler
 #ifdef CRASHCATCH_AUTO_INIT
     namespace {
         const bool _autoInit = CrashCatch::enable();
