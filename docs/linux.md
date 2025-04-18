@@ -1,22 +1,37 @@
 # 🐧 Linux Support
 
-CrashCatch v1.1.0 introduces **out-of-the-box support for Linux**, providing robust crash logging for native C++ applications using POSIX signal handling.
+CrashCatch v1.2.0 provides robust, out-of-the-box crash handling for native Linux C++ applications using POSIX signals and `backtrace()`.
+
+It captures detailed crash context, generates a human-readable `.txt` report, and includes a demangled stack trace and environment info — all from a single header.
 
 ---
 
 ## 🔥 Supported Signals
 
-CrashCatch currently handles the following common crash-related signals on Linux:
+CrashCatch handles a wide set of fatal signals:
 
-| Signal   | Description                    |
-|----------|--------------------------------|
-| `SIGSEGV`| Segmentation fault             |
-| `SIGABRT`| Aborted process (e.g. `abort()`) |
-| `SIGFPE` | Floating point exception (e.g. divide by zero) |
+| Signal     | Description                              |
+|------------|------------------------------------------|
+| `SIGSEGV`  | Segmentation fault (invalid memory access) |
+| `SIGABRT`  | Aborted process (e.g. `abort()`)           |
+| `SIGFPE`   | Floating point exception (e.g. divide by zero) |
+| `SIGILL`   | Illegal instruction                        |
+| `SIGBUS`   | Bus error (e.g. misaligned memory access)  |
 
-Additional signals (e.g. `SIGILL`, `SIGBUS`) may be supported in future versions.
+> All signals trigger a crash log and invoke the optional `onCrash()` callback with full crash context.
 
 ---
+
+## 🧠 Additional Linux Features
+
+- ✅ Signal name & number are logged in crash reports  
+- ✅ Full stack trace with demangled symbols (`__cxa_demangle`)  
+- ✅ Executable path detection via `/proc/self/exe`  
+- ✅ Crash context includes signal, timestamp, paths, and notes  
+- ✅ Works in GUI and headless/CLI environments
+
+---
+
 
 ## 📋 Output Format
 
@@ -97,6 +112,8 @@ int main() {
  }
  ```
  ---
+
+ ---
  ## CMake Setup
  No special setup is required on Linux. Simply include the header and optionalling link with `-rdynamic` to improve symbol resolution
  ```cmake
@@ -125,3 +142,4 @@ int main() {
 
 * JSON-based crash logs
 
+---

@@ -19,25 +19,23 @@ CrashCatch is a lightweight, single-header C++ crash-reporting library for gener
 
 CrashCatch provides simple and powerful crash diagnostics for C++ applications on **Windows and Linux**, with macOS support planned. Whether you're building GUI apps, system tools, or CLI utilities, CrashCatch helps you catch and log critical failures with minimal setup.
 
-The current version supports Windows and uses MiniDumpWriteDump to generate crash reports. Linux and macOS support are planned.
+As of **v1.2**, CrashCatch supports rich crash context capture and includes optional post-crash upload integration.
+
 
 ---
-
 ## 🚀 Key Features
 
-- ✅ Cross-platform design: Windows (available), Linux/macOS (planned)
+- ✅ Cross-platform: Windows & Linux (macOS coming soon)
 - 🔹 Single-header C++ integration
-- 💥 Stack trace on unhandled exceptions
-- 💥 **Signal/Exception Capture** – Handles `SIGSEGV`, `SIGABRT`, `SIGFPE` (Linux), unhandled exceptions (Windows)
-- 🧠 Automatic `.dmp` + `.txt` crash report generation
-- 🔍 **Symbol Resolution** – Demangled symbol output (Linux), top frame names (Windows)
-- 📋 Self-diagnostics in plain-text (version, uptime, config, etc.)
-- 🧼 Minimal setup: drop-in header or one-liner initialization
-- ⚙️ Configurable: version tagging, notes, message box, cleanup
-- 🛡️ Future-ready: secure upload, anonymization, viewer app
-- 🧪 Debug & release support
-- 🧵 Symbol resolution for top stack frames (x86 / x64 aware)
-
+- 💥 Exception and signal handling (`SIGSEGV`, `SIGABRT`, `SIGFPE`, etc.)
+- 🧠 `.dmp` and `.txt` crash report generation
+- 🧩 **`onCrash()` & `onCrashUpload()` Hooks** – Run cleanup or upload crash artifacts
+- 🔍 Demangled symbols on Linux, symbol resolution on Windows
+- 📋 Self-diagnostics: version, build, architecture, exec path
+- 🧼 Drop-in, no external libraries required
+- ⚙️ Fully configurable output format & location
+- 📁 CMake install + `find_package` support
+- 🧪 Debug & release builds supported
 ---
 ---
 ## ✅ Supported Platforms
@@ -125,6 +123,18 @@ int main(){
 }
 ```
 ---
+## 📦 CMake Integration
+
+You can install CrashCatch with:
+
+```bash
+cmake -Bbuild -DCMAKE_INSTALL_PREFIX=install
+cmake --build build --target install
+find_package(CrashCatch REQUIRED)
+target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
+```
+---
+---
 
 ## 📄 Crash Output
 
@@ -194,6 +204,19 @@ Executable: /home/user/CrashCatchTest
 - **Notes**: Any additional notes or comments about the crash.
 
 ---
+---
+## Crash Context API
+CrashCatch provides detailed crash metadata via `CrashContext`:
+```cpp
+struct CrashContext{
+  std::string dumpFilePath;
+  std::string logFilePath;
+  std::string timestamp;
+  int singalOrCode;
+};
+```
+You can use both in `onCrash` and `onCrashUpload`
+---
 
 ## 🗺 Roadmap
 
@@ -211,26 +234,15 @@ CrashCatch is actively being developed with the goal of becoming a robust, cross
 - [x] `onCrash` callback hook for cleanup
 - [x] Configurable output folder, filename, and formatting
 - [x] Added CMake Support
+- [x] Complete Linux Support (v1.2)
+- [x] Unified API
 
 ---
-## 📦 CMake Integration
-
-You can install CrashCatch with:
-
-```bash
-cmake -Bbuild -DCMAKE_INSTALL_PREFIX=install
-cmake --build build --target install
-find_package(CrashCatch REQUIRED)
-target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
-```
 ---
 ### 🔜 Planned
 
 - [ ] **Cross-Platform Support**  
-  Linux and macOS crash handling via POSIX signals and core dumps
-
-- [ ] **Unified API**  
-  One consistent interface for all supported platforms
+  macOS crash handling via POSIX signals and core dumps
 
 - [ ] **Remote Uploads**  
   Optional HTTPS endpoint for uploading crash reports (TLS encrypted)

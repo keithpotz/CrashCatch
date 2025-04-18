@@ -1,6 +1,6 @@
 # ⚙️ CMake Integration
 
-CrashCatch supports modern CMake out of the box, with both local usage and installable package support.
+CrashCatch supports **modern CMake** out of the box, with both **header-only subdirectory usage** and **installable package support** for larger or multi-project environments.
 
 ---
 
@@ -15,11 +15,11 @@ add_executable(MyApp main.cpp)
 target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
 ```
 
-This uses the header-only target defined inside CrashCatch’s `CMakeLists.txt`.
+This method is great for embedded or monorepo-style projects. It ensures that the CrashCatch target `INTERFACE ` only is available immediatly without installation.
 
 ---
 
-## 📦 Installing to Your System
+## 📦 Installing to Your System (Optional)
 
 To install CrashCatch to your machine or a custom prefix:
 
@@ -42,7 +42,7 @@ install/
 
 ## 🔍 Using find_package()
 
-In another project, you can now use CrashCatch as a package:
+If you've installed CrashCatch via `cmake --install`, it can be imported in another project.
 
 ```cmake
 find_package(CrashCatch REQUIRED)
@@ -51,6 +51,10 @@ target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
 ```
 
 CMake will locate the headers and preconfigured target with no additional setup.
+>**Linux Note:** You may optionally add `-rdynamic` or link `-ldl` for bettery symbol resolution during stack tracing:
+```cmake
+target_link_options(MyApp PRIVATE -rdynamic)
+``` 
 
 ---
 

@@ -5,19 +5,30 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Header-only](https://img.shields.io/badge/Header--only-yes-brightgreen)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightblue)
+
 ![C++17](https://img.shields.io/badge/C%2B%2B-17%2B-blue)
 ![CI](https://github.com/keithpotz/CrashCatch/actions/workflows/build.yml/badge.svg)
 
 ---
+---
 
 ## 🚀 What is CrashCatch?
-CrashCatch is a zero-dependency, header-only crash reporting library for C++ applications.  
-It captures crashes, generates `.dmp` (Windows) or `.txt` (Windows and Linux) files, includes stack traces, and optionally shows a GUI-friendly message box — all from a single header.
-* Works great in embedded systems, CLI tools, and GUI apps alike.
 
+CrashCatch is a modern, single-header crash reporting library for C++ applications — supporting both **Windows** and **Linux**.
 
-As of **v1.1.0**, CrashCatch supports both **Windows** and **Linux** out of the box.
+It automatically captures crashes, logs diagnostic information, generates `.dmp` (Windows) or `.txt` (Windows & Linux) reports, and includes stack traces and environment metadata. From minimal CLI tools to full desktop apps, CrashCatch fits right in.
+
+Key highlights:
+- No external dependencies — just include the header
+- Full crash context (timestamp, platform, executable path, version, etc.)
+- Symbol resolution and demangling (platform-specific)
+- Configurable `onCrash()` and `onCrashUpload()` hooks
+- Optional crash dialog support (Windows GUI apps)
+
+> As of **v1.2.0**, CrashCatch offers complete Linux support with signal handling, demangled stack traces, and crash context generation.
+
 ---
+
 
 ## ✅ Supported Platforms
 
@@ -86,6 +97,7 @@ cmake --build . --target install
 ```
 
 Then in another project:
+
 ```cmake
 find_package(CrashCatch REQUIRED)
 target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
@@ -115,14 +127,22 @@ Explore working examples in the GitHub repo:
 ---
 
 ## 🛠 Features
-- ✅ Header-only — drop-in, no dependencies
-- ✅ Windows `.dmp` and `.txt` crash logs
-- ✅ Linux .txt logs with stack trace and signal info
-- ✅ Thread safety
-- ✅ Symbol resolution for stack trace
-- ✅ GUI message box support (Windows)
-- ✅ CMake + CI friendly
-- 🔜 macOS and remote reporting coming soon
+
+- ✅ **Header-only** — single `.hpp`, no external dependencies
+- ✅ **Cross-platform** — Windows & Linux support out of the box
+- ✅ **Automatic Crash Capture** — via `SetUnhandledExceptionFilter` (Windows) or POSIX signals (Linux)
+- ✅ **Crash Context Info** — includes executable path, build config, version, and notes
+- ✅ **Crash Reporting**:
+  - `.dmp` (Windows) or `.txt` (Linux/Windows) crash files
+  - Detailed stack traces and environment info
+- ✅ **Symbol Resolution**:
+  - Top frame symbols (Windows)
+  - Demangled symbols (Linux)
+- ✅ **onCrash Callback** — run custom cleanup or logging logic with full crash context
+- ✅ **Optional Crash Dialog** — user-friendly message box (Windows only)
+- ✅ **Configurable Dump Location**, filename prefix, and timestamping
+- ✅ **onCrashUpload Hook** — pass report data to your custom uploader
+- ✅ **CMake + CI Friendly** — drop-in installation and build support
 
 ---
 
