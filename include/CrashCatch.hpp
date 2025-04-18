@@ -22,7 +22,6 @@ License: MIT
 #include <Windows.h>
 #include <DbgHelp.h>
 #pragma comment(lib, "DbgHelp.lib") //Auto-link debugging support library
-#pragma comment(lib, "DbgHelp.lib") //Auto-link debugging support library
 #elif defined(__linux__)
 #define CRASHCATCH_PLATFORM_LINUX
 #include <signal.h>
