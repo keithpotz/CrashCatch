@@ -22,6 +22,7 @@ License: MIT
 #include <Windows.h>
 #include <DbgHelp.h>
 #pragma comment(lib, "DbgHelp.lib") //Auto-link debugging support library
+#pragma comment(lib, "DbgHelp.lib") //Auto-link debugging support library
 #elif defined(__linux__)
 #define CRASHCATCH_PLATFORM_LINUX
 #include <signal.h>
@@ -124,7 +125,9 @@ namespace CrashCatch {
         if (!log.is_open()) return;
 
         log << "Crash Report\n============\n";
+
 #ifdef CRASHCATCH_PLATFORM_LINUX
+        // Stack trace for Linux
         log << "Signal: " << strsignal(signal) << " (" << signal << ")\n";
 #endif
         log << "Timestamp: " << (timestamp.empty() ? "N/A" : timestamp) << "\n\n";
