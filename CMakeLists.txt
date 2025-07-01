@@ -73,7 +73,6 @@ target_link_libraries(Example_divideByZero PRIVATE CrashCatch)
 
 add_executable(TestCrash examples/onCrash.cpp)
 target_include_directories(TestCrash PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(TestCrash PRIVATE DbgHelp)
 
 add_executable(Example_UploadCrash examples/Example_UploadCrash.cpp)
 target_link_libraries(Example_UploadCrash PRIVATE CrashCatch)
