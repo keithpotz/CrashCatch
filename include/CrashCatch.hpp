@@ -19,9 +19,9 @@ License: MIT
 
 #if defined(_WIN32)
 #define CRASHCATCH_PLATFORM_WINDOWS
-#include <Windows.h>
-#include <DbgHelp.h>
-#pragma comment(lib, "DbgHelp.lib") //Auto-link debugging support library
+#include <windows.h>
+#include <dbgHelp.h>
+#pragma comment(lib, "dbgHelp.lib") //Auto-link debugging support library
 #elif defined(__linux__)
 #define CRASHCATCH_PLATFORM_LINUX
 #include <signal.h>
@@ -243,3 +243,4 @@ namespace CrashCatch {
 #endif
 
 } // namespace CrashCatch
+
