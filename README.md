@@ -37,103 +37,131 @@ As of **v1.2**, CrashCatch supports rich crash context capture and includes opti
 - 📁 CMake install + `find_package` support
 - 🧪 Debug & release builds supported
 ---
----
-## ✅ Supported Platforms
 
-| OS      | Supported | Crash Handling Method   |
-|---------|-----------|--------------------------|
-| Windows | ✅ Yes    | `SetUnhandledExceptionFilter` + MiniDump |
-| Linux   | ✅ Yes    | POSIX signals (`signal()`) + backtrace |
-| macOS   | 🚧 Planned | POSIX + Mach exceptions |
+--
 
----
+## Why CrashCatch?
 
-## 📁 Project Structure
+Most crash reporting solutions for C++ require heavyweight SDKs, mandatory cloud uploads, or platform-specific build gymnastics. CrashCatch is different:
 
-```text
-CrashCatch/
-├── include/
-│   └── CrashCatch.hpp       # Single-header crash handler
-├── examples/
-│   └── CrashCatchExample.cpp
-├── LICENSE                  # MIT License
-├── README.md                # Project documentation
-└── CONTRIBUTING.md          # Contribution guidelines
-```
+| | CrashCatch | Crashpad | Sentry Native | Backtrace |
+|---|---|---|---|---|
+| Single header | ✅ | ❌ | ❌ | ❌ |
+| No external dependencies | ✅ | ❌ | ❌ | ❌ |
+| Offline-first | ✅ | ❌ | ❌ | ❌ |
+| Windows + Linux | ✅ | ✅ | ✅ | ✅ |
+| onCrash / onUpload hooks | ✅ | ❌ | ✅ | ✅ |
+| Free & open source | ✅ | ✅ | Partial | ❌ |
+
 ---
 
-## 🔧 Installation
-CrashCatch is 100% header-only.
+---
 
-To integrate:
+## Quick Start
 
-1. Copy `include/CrashCatch.hpp` into your project
-2. Add `#include "CrashCatch.hpp"` in your code
-3. (Optional) Use `CrashCatch::enable()` or the `CRASHCATCH_AUTO_INIT` macro
-4. For Linux inlcude `-ldl` or `-rdynamic` for deeper Linux symbole resolution if desired
+### Zero Config — just include and it works
 
-> ✅ No build steps.  
-> ❌ No `.lib`, `.dll`, or `.so`.  
-> 🔒 Just one `.hpp` file, ready to use.
-
-Copy `CrashCatch.hpp` into your project and include it:
-
-```cpp
-#include "CrashCatch.hpp"
-
-## QuickStart
-### Zero Config (Auto-init)
 ```cpp
 #define CRASHCATCH_AUTO_INIT
 #include "CrashCatch.hpp"
 
-int main(){
+int main() {
     int* ptr = nullptr;
-    *ptr = 42; // simulated crash
+    *ptr = 42; // CrashCatch catches this and writes a crash report
 }
 ```
-### One-Liner Initialization
+
+### One-Liner Setup
+
 ```cpp
 #include "CrashCatch.hpp"
-int main(){
-    CrashCatch::enable(); //Initalizes with default config
 
-    int* ptr = nullptr;
-    *ptr = 42; // simulated crash
+int main() {
+    CrashCatch::enable();
+    // your app code
 }
 ```
+
 ### Full Configuration
+
 ```cpp
 #include "CrashCatch.hpp"
 
-int main(){
-    CrashCatch::Config config:
-    config.appVersion = "1.0.0";
-    config.buildConfig = "Release";
-    config.additionalNotes = "This is a test build.";
-    config.onCrash = []{
-        std::cout << "Cleaning up before crash...\n"/
-    };
+int main() {
+    CrashCatch::Config config;
+    config.appVersion      = "1.1.0";
+    config.buildConfig     = "Release";
+    config.additionalNotes = "Internal beta build";
     config.showCrashDialog = true;
 
-    CrashCatch::initalize(config);
+    config.onCrash = [] {
+        // Runs before process exits — flush logs, close handles, etc.
+        std::cout << "Crash detected, cleaning up...\n";
+    };
 
-    int* ptr = nullptr;
-    *ptr = 42; // simulated crash
+    config.onCrashUpload = [](const CrashCatch::CrashReport& report) {
+        // Send to your own backend, S3, or CrashCatch Labs
+        uploadReport(report.dumpPath, report.contextJson);
+    };
+
+    CrashCatch::initialize(config);
+    // your app code
 }
 ```
----
-## 📦 CMake Integration
 
-You can install CrashCatch with:
+---
+
+## Supported Platforms
+
+| OS | Status | Crash Handling |
+|---|---|---|
+| Windows 10 / 11 | ✅ Supported | `SetUnhandledExceptionFilter` + MiniDump |
+| Linux | ✅ Supported | POSIX signals + `backtrace()` |
+| macOS | 🚧 Planned | POSIX + Mach exceptions |
+
+> **v1.2.0** — Complete Linux support shipped: signal handling, demangled stack traces, and crash context generation.
+
+---
+
+## Installing with CMake
 
 ```bash
-cmake -Bbuild -DCMAKE_INSTALL_PREFIX=install
-cmake --build build --target install
+mkdir build && cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=./install
+cmake --build . --target install
+```
+
+Then in your project:
+
+```cmake
 find_package(CrashCatch REQUIRED)
 target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
 ```
+
+Or just copy `CrashCatch.hpp` directly into your project — no build system required.
+
 ---
+
+## Examples
+
+Working examples are in the [`/examples`](examples/) folder:
+
+| Example | What it demonstrates |
+|---|---|
+| `ZeroConfig` | Auto-init with no setup |
+| `OneLiner` | `CrashCatch::enable()` minimal setup |
+| `FullConfig` | All config options including callbacks |
+| `ThreadCrash` | Crash on a non-main thread |
+| `DivideByZero` | Arithmetic exception handling |
+
+---
+
+## Requirements
+
+- C++17 or later
+- Windows: MSVC (Visual Studio 2019+) or MinGW
+- Linux: GCC or Clang with `-rdynamic` for stack traces
+
 ---
 
 ## 📄 Crash Output
@@ -222,57 +250,33 @@ You can use both in `onCrash` and `onCrashUpload`
 
 CrashCatch is actively being developed with the goal of becoming a robust, cross-platform crash-handling solution.
 
-### ✅ Completed
-
-- [x] Initial Windows prototype with `.dmp` and `.txt` support
-- [x] Linux POSIX signal handling
-- [x] One-liner setup (`CrashCatch::enable()`)
-- [x] Macro-based auto-initialization (`CRASHCATCH_AUTO_INIT`)
-- [x] Stack trace generation (x86 / x64 aware)
-- [x] Human-readable crash logs with diagnostics
-- [x] Optional message box (GUI-friendly)
-- [x] `onCrash` callback hook for cleanup
-- [x] Configurable output folder, filename, and formatting
-- [x] Added CMake Support
-- [x] Complete Linux Support (v1.2)
-- [x] Unified API
+- [x] Windows crash capture + MiniDump
+- [x] Linux signal handling + backtrace
+- [x] `onCrash` and `onCrashUpload` hooks
+- [x] CMake install support
+- [ ] DLL / shared library support
+- [ ] Optional stack trace suppression (Windows)
+- [ ] macOS support (POSIX + Mach exceptions)
+- [ ] vcpkg and Conan package registry support
 
 ---
+
 ---
-### 🔜 Planned
 
-- [ ] **Cross-Platform Support**  
-  macOS crash handling via POSIX signals and core dumps
+## Understand Your Crashes — CrashCatch Labs
 
-- [ ] **Remote Uploads**  
-  Optional HTTPS endpoint for uploading crash reports (TLS encrypted)
+CrashCatch generates the report. **[CrashCatch Labs](https://crashcatchlabs.com)** tells you what it means.
 
-- [ ] **JSON Crash Logs**  
-  Structured `.json` report format alongside `.txt`
+CrashCatch Labs is a Windows-first crash analysis tool built specifically for C++ and Unreal Engine developers. Drop in a crash report and get:
 
-- [ ] **Symbol Upload Support**  
-  Integration with symbol servers for full symbol resolution
+- Symbolicated stack traces with engine frames filtered out
+- Plain-English root cause explanation *(Explain Mode)*
+- Deep technical analysis for engineers *(Engineer Mode)*
+- PDF export for sharing with your team
 
-- [ ] **Crash Viewer App**  
-  GUI tool to browse `.dmp` / `.txt` reports locally
+> Currently in development. **[Join the waitlist](https://crashcatchlabs.com/subscribe.html)** to get early access and launch pricing.
 
-- [ ] **Package Manager Support**  
-  Distribute via vcpkg, Conan, Homebrew, etc.
-
-- [ ] **CI/CD Integration**  
-  GitHub Actions for test builds, release pipelines
-
-- [ ] **Auto-Cleanup of Old Reports**  
-  Limit or rotate crash logs by count, size, or age
-
-- [ ] **Optional `.zip` Compression**  
-  Combine `.dmp` and `.txt` into a zip archive for easier sharing
-
-- [ ] **Auto-Open Crash Log**  
-  Developer mode option to open `.txt` in Notepad after crash
-
-- [ ] **Full Documentation Site**  (In progress)
-  GitHub Pages or static `/docs` with setup, usage, API reference
+---
 
 ## 📝 Contributing
 We warmly welcome contributions! Check `CONTRIBUTING.md` for more information.
