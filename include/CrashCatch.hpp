@@ -59,6 +59,7 @@ namespace CrashCatch {
             "Release";
 #endif
         std::string additionalNotes = "";            // Optional notes in crash log
+        bool includeStackTrace = true;               // Output stack trace in .txt log (Windows + Linux)
     };
 
     inline Config globalConfig; // Global configuration
@@ -126,22 +127,95 @@ namespace CrashCatch {
         log << "Crash Report\n============\n";
 
 #ifdef CRASHCATCH_PLATFORM_LINUX
-        // Stack trace for Linux
         log << "Signal: " << strsignal(signal) << " (" << signal << ")\n";
 #endif
         log << "Timestamp: " << (timestamp.empty() ? "N/A" : timestamp) << "\n\n";
         log << "Environment Info:\n" << getDiagnosticsInfo() << "\n";
 
-#ifdef CRASHCATCH_PLATFORM_LINUX
-        // Output stack trace
-        void* callstack[128];
-        int frames = backtrace(callstack, 128);
-        char** symbols = backtrace_symbols(callstack, frames);
-        log << "\nStack Trace:\n";
-        for (int i = 0; i < frames; ++i) {
-            log << "  [" << i << "]: " << demangle(symbols[i]) << "\n";
+#ifdef CRASHCATCH_PLATFORM_WINDOWS
+        if (globalConfig.includeStackTrace) {
+            // Walk the stack using DbgHelp (already linked via pragma comment)
+            HANDLE process = GetCurrentProcess();
+            HANDLE thread  = GetCurrentThread();
+
+            SymInitialize(process, nullptr, TRUE);
+
+            CONTEXT context = {};
+            context.ContextFlags = CONTEXT_FULL;
+            RtlCaptureContext(&context);
+
+            STACKFRAME64 frame = {};
+#if defined(_M_X64)
+            DWORD machineType       = IMAGE_FILE_MACHINE_AMD64;
+            frame.AddrPC.Offset     = context.Rip;
+            frame.AddrPC.Mode       = AddrModeFlat;
+            frame.AddrFrame.Offset  = context.Rbp;
+            frame.AddrFrame.Mode    = AddrModeFlat;
+            frame.AddrStack.Offset  = context.Rsp;
+            frame.AddrStack.Mode    = AddrModeFlat;
+#elif defined(_M_IX86)
+            DWORD machineType       = IMAGE_FILE_MACHINE_I386;
+            frame.AddrPC.Offset     = context.Eip;
+            frame.AddrPC.Mode       = AddrModeFlat;
+            frame.AddrFrame.Offset  = context.Ebp;
+            frame.AddrFrame.Mode    = AddrModeFlat;
+            frame.AddrStack.Offset  = context.Esp;
+            frame.AddrStack.Mode    = AddrModeFlat;
+#else
+            DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
+#endif
+            // Symbol buffer
+            const int MAX_SYM_NAME_LEN = 256;
+            char symBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME_LEN * sizeof(char)];
+            SYMBOL_INFO* symbol = reinterpret_cast<SYMBOL_INFO*>(symBuffer);
+            symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+            symbol->MaxNameLen   = MAX_SYM_NAME_LEN;
+
+            log << "\nStack Trace:\n";
+            int frameIndex = 0;
+
+            while (StackWalk64(machineType, process, thread, &frame, &context,
+                               nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr)) {
+                if (frame.AddrPC.Offset == 0) break;
+
+                log << "  [" << frameIndex++ << "]: ";
+
+                DWORD64 displacement = 0;
+                if (SymFromAddr(process, frame.AddrPC.Offset, &displacement, symbol)) {
+                    log << symbol->Name;
+
+                    // Try to get file/line info
+                    IMAGEHLP_LINE64 line = {};
+                    line.SizeOfStruct    = sizeof(IMAGEHLP_LINE64);
+                    DWORD lineDisp       = 0;
+                    if (SymGetLineFromAddr64(process, frame.AddrPC.Offset, &lineDisp, &line)) {
+                        log << " (" << line.FileName << ":" << line.LineNumber << ")";
+                    }
+                } else {
+                    // No symbol — fall back to raw address
+                    log << "0x" << std::hex << frame.AddrPC.Offset << std::dec;
+                }
+                log << "\n";
+
+                // Avoid runaway stack walks
+                if (frameIndex > 64) break;
+            }
+
+            SymCleanup(process);
         }
-        free(symbols);
+#endif
+
+#ifdef CRASHCATCH_PLATFORM_LINUX
+        if (globalConfig.includeStackTrace) {
+            void* callstack[128];
+            int frames = backtrace(callstack, 128);
+            char** symbols = backtrace_symbols(callstack, frames);
+            log << "\nStack Trace:\n";
+            for (int i = 0; i < frames; ++i) {
+                log << "  [" << i << "]: " << demangle(symbols[i]) << "\n";
+            }
+            free(symbols);
+        }
 #endif
 
         log.close();
