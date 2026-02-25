@@ -27,6 +27,8 @@ Key highlights:
 
 > As of **v1.2.0**, CrashCatch offers complete Linux support with signal handling, demangled stack traces, and crash context generation.
 
+> As of **v1.3.0**, CrashCatch adds Windows stack trace output in `.txt` logs, an `includeStackTrace` config flag, and DLL/shared library support via `CrashCatchDLL.hpp`.
+
 ---
 
 ## 🤔 Why CrashCatch?
@@ -131,6 +133,8 @@ Explore working examples in the GitHub repo:
 | `FullConfig` | All config options including callbacks |
 | `ThreadCrash` | Crash on a non-main thread |
 | `DivideByZero` | Arithmetic exception handling |
+| `StackTraceExample` | `includeStackTrace` flag — enable/suppress stack trace in `.txt` log |
+| `DLLExample` | Using CrashCatch from a C++11 project via `CrashCatchDLL.hpp` |
 
 [View Examples Folder](../examples/)
 
@@ -162,6 +166,9 @@ Explore working examples in the GitHub repo:
 - ✅ **Configurable Dump Location**, filename prefix, and timestamping
 - ✅ **onCrashUpload Hook** — pass report data to your custom uploader
 - ✅ **CMake + CI Friendly** — drop-in installation and build support
+- ✅ **Windows stack trace in `.txt` log** — `StackWalk64` + `SymFromAddr` with file/line info *(v1.3.0)*
+- ✅ **`includeStackTrace` flag** — suppress stack trace output on Windows & Linux *(v1.3.0)*
+- ✅ **DLL / shared library support** — plain C interface via `CrashCatchDLL.hpp` for C++11/C++98 consumers *(v1.3.0)*
 
 ---
 
@@ -179,8 +186,8 @@ Explore working examples in the GitHub repo:
 - [x] Linux signal handling + backtrace
 - [x] `onCrash` and `onCrashUpload` hooks
 - [x] CMake install support
-- [ ] DLL / shared library support
-- [ ] Optional stack trace suppression (Windows)
+- [x] DLL / shared library support (`CrashCatchDLL.hpp`)
+- [x] Windows stack trace in `.txt` log + `includeStackTrace` flag
 - [ ] macOS support (POSIX + Mach exceptions)
 - [ ] vcpkg and Conan package registry support
 
