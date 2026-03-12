@@ -10,6 +10,9 @@
 ![Single Header](https://img.shields.io/badge/Single--header-✔️-green)
 ![CI](https://github.com/keithpotz/CrashCatch/actions/workflows/build.yml/badge.svg)
 
+> **CrashCatch Analyze is now in Beta!** A standalone desktop tool for analyzing and understanding your crash reports — symbolicated stack traces, plain-English explanations, and more.
+> **[Download / View the Beta on GitHub](https://github.com/keithpotz/Crash-Catch-Analyzer-Release)**
+
 
 CrashCatch is a lightweight, single-header C++ crash-reporting library for generating `.dmp` and `.txt` crash logs — complete with stack traces, diagnostics, optional cleanup hooks, and user dialogs.
 
@@ -40,8 +43,6 @@ As of **v1.2**, CrashCatch supports rich crash context capture and includes opti
 - 🔇 **`includeStackTrace` flag** — suppress stack trace output on Windows & Linux *(v1.3.0)*
 - 📦 **DLL / shared library support** — plain C interface via `CrashCatchDLL.hpp` for C++11/C++98 consumers *(v1.3.0)*
 ---
-
---
 
 ## Why CrashCatch?
 
@@ -102,9 +103,9 @@ int main() {
         std::cout << "Crash detected, cleaning up...\n";
     };
 
-    config.onCrashUpload = [](const CrashCatch::CrashReport& report) {
+    config.onCrashUpload = [](const CrashCatch::CrashContext& report) {
         // Send to your own backend, S3, or CrashCatch Labs
-        uploadReport(report.dumpPath, report.contextJson);
+        uploadReport(report.dumpFilePath, report.logFilePath);
     };
 
     CrashCatch::initialize(config);
@@ -122,7 +123,7 @@ int main() {
 | Linux | ✅ Supported | POSIX signals + `backtrace()` |
 | macOS | 🚧 Planned | POSIX + Mach exceptions |
 
-> **v1.2.0** — Complete Linux support shipped: signal handling, demangled stack traces, and crash context generation.
+> **v1.2.0** — Complete Linux support: signal handling, demangled stack traces, and crash context generation.
 
 > **v1.3.0** — Windows stack trace output in `.txt` log, `includeStackTrace` config flag, and DLL/shared library support via `CrashCatchDLL.hpp`.
 
@@ -234,12 +235,12 @@ Executable: /home/user/CrashCatchTest
 - **Architecture (x86/x64)**: The architecture of the system where the crash occurred.
 - **Executable**: The path to the executable that crashed.
 - **Uptime (s)**: The duration the application was running when the crash occurred.
--**App version**: The version of the application from config.
+- **App version**: The version of the application from config.
 - **Build Config**: The configuration of the build (e.g., Release, Debug).
 - **Notes**: Any additional notes or comments about the crash.
 
 ---
----
+
 ## Crash Context API
 CrashCatch provides detailed crash metadata via `CrashContext`:
 ```cpp
@@ -247,7 +248,7 @@ struct CrashContext{
   std::string dumpFilePath;
   std::string logFilePath;
   std::string timestamp;
-  int singalOrCode;
+  int signalOrCode;
 };
 ```
 You can use both in `onCrash` and `onCrashUpload`
@@ -265,8 +266,6 @@ CrashCatch is actively being developed with the goal of becoming a robust, cross
 - [x] Windows stack trace in `.txt` log + `includeStackTrace` flag
 - [ ] macOS support (POSIX + Mach exceptions)
 - [ ] vcpkg and Conan package registry support
-
----
 
 ---
 
