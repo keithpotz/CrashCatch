@@ -5,10 +5,7 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO keithpotz/CrashCatch
     REF "v${VERSION}"
-    # Run the following after tagging the release to get the correct SHA512:
-    #   vcpkg install crashcatch --overlay-ports=packaging/vcpkg
-    # vcpkg will print the expected SHA512 in the error output if this is wrong.
-    SHA512 0
+    SHA512 ba3f431b1c1da9f8ead4038ff8073df3010394ce84a6976ba6b9e9f50842a3aacb367b443a92fef75317ee49cf08384a39d76b944bf1e2735d3e2a3647c63f01
     HEAD_REF main
 )
 
