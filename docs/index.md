@@ -28,11 +28,11 @@ Key highlights:
 - Optional crash dialog support (Windows GUI apps)
 - Available via **vcpkg** and **Conan**
 
-> **v1.4.0** — Correctness release: accurate crash-site stack context, async-signal-safe Linux handler, callbacks after file write, thread-safe timestamps, and more.
+> **v1.4.0**  Correctness release: accurate crash-site stack context, async-signal-safe Linux handler, callbacks after file write, thread-safe timestamps, and more.
 
-> **v1.3.0** — Windows stack trace output in `.txt` logs, `includeStackTrace` config flag, and DLL/shared library support via `CrashCatchDLL.hpp`.
+> **v1.3.0**  Windows stack trace output in `.txt` logs, `includeStackTrace` config flag, and DLL/shared library support via `CrashCatchDLL.hpp`.
 
-> **v1.2.0** — Complete Linux support with signal handling, demangled stack traces, and crash context generation.
+> **v1.2.0**  Complete Linux support with signal handling, demangled stack traces, and crash context generation.
 
 ---
 
