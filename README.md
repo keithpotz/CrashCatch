@@ -10,18 +10,18 @@
 ![Single Header](https://img.shields.io/badge/Single--header-✔️-green)
 ![CI](https://github.com/keithpotz/CrashCatch/actions/workflows/build.yml/badge.svg)
 
-> **CrashCatch Analyzer is now in Beta!** A standalone desktop tool for analyzing and understanding your crash reports — symbolicated stack traces, plain-English explanations, and more.
+> **CrashCatch Analyzer is now in Beta!** A standalone desktop tool for analyzing and understanding your crash reports  symbolicated stack traces, plain-English explanations, and more.
 > **[Download / View the Beta on GitHub](https://github.com/keithpotz/Crash-Catch-Analyzer-Release)**
 
-CrashCatch is a lightweight, single-header C++ crash-reporting library that generates `.dmp` and `.txt` crash logs with accurate stack traces, diagnostics, optional cleanup hooks, and user dialogs — all with no external dependencies.
+CrashCatch is a lightweight, single-header C++ crash-reporting library that generates `.dmp` and `.txt` crash logs with accurate stack traces, diagnostics, optional cleanup hooks, and user dialogs all with no external dependencies.
 
 ---
 
 ## Key Features
 
 - Cross-platform: Windows & Linux (macOS planned)
-- Single-header integration — just `#include "CrashCatch.hpp"`
-- Accurate crash-site stack traces — Windows stack walk uses the actual crash context, not the handler frame
+- Single-header integration just `#include "CrashCatch.hpp"`
+- Accurate crash-site stack traces Windows stack walk uses the actual crash context, not the handler frame
 - `.dmp` MiniDump (Windows) and `.txt` human-readable report (Windows & Linux)
 - `onCrash()` and `onCrashUpload()` callbacks fire **after** crash files are written to disk
 - Demangled symbols on Linux, `SymFromAddr` with file/line info on Windows
@@ -132,7 +132,7 @@ find_package(CrashCatch REQUIRED)
 target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
 ```
 
-Or copy `CrashCatch.hpp` directly into your project — no build system required.
+Or copy `CrashCatch.hpp` directly into your project  no build system required.
 
 ---
 
@@ -140,8 +140,8 @@ Or copy `CrashCatch.hpp` directly into your project — no build system required
 
 When a crash occurs, CrashCatch writes to `./crash_dumps/` by default:
 
-- `crash_YYYY-MM-DD_HH-MM-SS.dmp` — Binary MiniDump (Windows only, viewable in WinDbg)
-- `crash_YYYY-MM-DD_HH-MM-SS.txt` — Human-readable crash summary
+- `crash_YYYY-MM-DD_HH-MM-SS.dmp`  Binary MiniDump (Windows only, viewable in WinDbg)
+- `crash_YYYY-MM-DD_HH-MM-SS.txt`  Human-readable crash summary
 
 ### Example `.txt` output (Windows)
 
@@ -287,8 +287,9 @@ Working examples are in the [`/examples`](examples/) folder:
 - [x] Accurate crash-site stack context (v1.4.0)
 - [x] Async-signal-safe Linux crash handler via `fork()` (v1.4.0)
 - [x] Thread-safe timestamp generation (v1.4.0)
+- [x] vcpkg and Conan package registry support
 - [ ] macOS support (POSIX + Mach exceptions)
-- [ ] vcpkg and Conan package registry support
+
 
 ---
 

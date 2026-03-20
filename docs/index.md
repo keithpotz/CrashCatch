@@ -16,18 +16,23 @@
 
 CrashCatch is a modern, single-header crash reporting library for C++ applications — supporting both **Windows** and **Linux**.
 
-It automatically captures crashes, logs diagnostic information, generates `.dmp` (Windows) or `.txt` (Windows & Linux) reports, and includes stack traces and environment metadata. From minimal CLI tools to full desktop apps, CrashCatch fits right in.
+It automatically captures crashes, logs diagnostic information, generates `.dmp` (Windows) or `.txt` (Windows & Linux) reports, and includes accurate stack traces and environment metadata. From minimal CLI tools to full desktop apps, CrashCatch fits right in.
 
 Key highlights:
-- No external dependencies — just include the header
+- No external dependencies just include the header
+- Accurate crash-site stack traces Windows stack walk uses the actual crash context, not the handler frame
 - Full crash context (timestamp, platform, executable path, version, etc.)
-- Symbol resolution and demangling (platform-specific)
+- Callbacks fire **after** crash files are written safe to read or upload from within `onCrash`
+- Async-signal-safe Linux handler via `fork()` no deadlocks even on heap corruption
 - Configurable `onCrash()` and `onCrashUpload()` hooks
 - Optional crash dialog support (Windows GUI apps)
+- Available via **vcpkg** and **Conan**
 
-> As of **v1.2.0**, CrashCatch offers complete Linux support with signal handling, demangled stack traces, and crash context generation.
+> **v1.4.0** — Correctness release: accurate crash-site stack context, async-signal-safe Linux handler, callbacks after file write, thread-safe timestamps, and more.
 
-> As of **v1.3.0**, CrashCatch adds Windows stack trace output in `.txt` logs, an `includeStackTrace` config flag, and DLL/shared library support via `CrashCatchDLL.hpp`.
+> **v1.3.0** — Windows stack trace output in `.txt` logs, `includeStackTrace` config flag, and DLL/shared library support via `CrashCatchDLL.hpp`.
+
+> **v1.2.0** — Complete Linux support with signal handling, demangled stack traces, and crash context generation.
 
 ---
 
@@ -50,9 +55,9 @@ Most crash reporting solutions for C++ require heavyweight SDKs, mandatory cloud
 
 | OS      | Supported | Crash Handling Method   |
 |---------|-----------|--------------------------|
-| Windows | ✅ Yes    | `SetUnhandledExceptionFilter` + MiniDump |
-| Linux   | ✅ Yes    | POSIX signals (`signal()`) + backtrace |
-| macOS   | 🚧 Planned | POSIX + Mach exceptions
+| Windows | ✅ Yes    | `SetUnhandledExceptionFilter` + MiniDump + StackWalk64 |
+| Linux   | ✅ Yes    | POSIX signals + `backtrace()` + `fork()` for safe I/O |
+| macOS   | 🚧 Planned | POSIX + Mach exceptions |
 
 ---
 
@@ -65,7 +70,7 @@ Most crash reporting solutions for C++ require heavyweight SDKs, mandatory cloud
 
 int main() {
     int* ptr = nullptr;
-    *ptr = 42; // simulated crash
+    *ptr = 42; // CrashCatch catches this automatically
 }
 ```
 
@@ -83,15 +88,18 @@ int main() {
 ### Full Config Example
 ```cpp
 #include "CrashCatch.hpp"
+#include <iostream>
 
 int main() {
     CrashCatch::Config config;
-    config.appVersion = "1.1.0";
-    config.buildConfig = "Release";
+    config.appVersion      = "2.0.0";
+    config.buildConfig     = "Release";
     config.additionalNotes = "Test build";
-    config.showCrashDialog = true;
-    config.onCrash = [] {
-        std::cout << "Cleaning up before crash...\n";
+    config.showCrashDialog = false;
+
+    config.onCrash = [](const CrashCatch::CrashContext& ctx) {
+        // Files are on disk — safe to read or upload here
+        std::cout << "Crash log: " << ctx.logFilePath << "\n";
     };
 
     CrashCatch::initialize(config);
@@ -103,22 +111,31 @@ int main() {
 
 ---
 
-## 📦 Installing with CMake
+## 📦 Installing
 
+### Header only
+Copy `CrashCatch.hpp` into your project no build system required.
+
+### CMake
 ```bash
 mkdir build && cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=./install
 cmake --build . --target install
 ```
-
-Then in another project:
-
 ```cmake
 find_package(CrashCatch REQUIRED)
 target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
 ```
 
-Or just copy `CrashCatch.hpp` directly into your project — no build system required.
+### vcpkg
+```bash
+vcpkg install crashcatch
+```
+
+### Conan
+```bash
+conan install crashcatch/1.4.0
+```
 
 ---
 
@@ -128,13 +145,13 @@ Explore working examples in the GitHub repo:
 
 | Example | What it demonstrates |
 |---|---|
-| `ZeroConfig` | Auto-init with no setup |
-| `OneLiner` | `CrashCatch::enable()` minimal setup |
-| `FullConfig` | All config options including callbacks |
-| `ThreadCrash` | Crash on a non-main thread |
-| `DivideByZero` | Arithmetic exception handling |
-| `StackTraceExample` | `includeStackTrace` flag — enable/suppress stack trace in `.txt` log |
-| `DLLExample` | Using CrashCatch from a C++11 project via `CrashCatchDLL.hpp` |
+| `Example_ZeroConfig` | Auto-init with `CRASHCATCH_AUTO_INIT` macro |
+| `Example_OneLiner` | `CrashCatch::enable()` minimal setup |
+| `Example_FullConfig` | All config options including callbacks |
+| `Example_ThreadCrash` | Crash on a non-main thread |
+| `Example_divideByZero` | Arithmetic exception handling |
+| `Example_UploadCrash` | `onCrashUpload` reading and uploading files |
+| `Example_StackTrace` | `includeStackTrace` flag |
 
 [View Examples Folder](../examples/)
 
@@ -151,30 +168,29 @@ Explore working examples in the GitHub repo:
 
 ## 🛠 Features
 
-- ✅ **Header-only** — single `.hpp`, no external dependencies
-- ✅ **Cross-platform** — Windows & Linux support out of the box
-- ✅ **Automatic Crash Capture** — via `SetUnhandledExceptionFilter` (Windows) or POSIX signals (Linux)
-- ✅ **Crash Context Info** — includes executable path, build config, version, and notes
-- ✅ **Crash Reporting**:
-  - `.dmp` (Windows) or `.txt` (Linux/Windows) crash files
-  - Detailed stack traces and environment info
-- ✅ **Symbol Resolution**:
-  - Top frame symbols (Windows)
-  - Demangled symbols (Linux)
-- ✅ **onCrash Callback** — run custom cleanup or logging logic with full crash context
-- ✅ **Optional Crash Dialog** — user-friendly message box (Windows only)
-- ✅ **Configurable Dump Location**, filename prefix, and timestamping
-- ✅ **onCrashUpload Hook** — pass report data to your custom uploader
-- ✅ **CMake + CI Friendly** — drop-in installation and build support
-- ✅ **Windows stack trace in `.txt` log** — `StackWalk64` + `SymFromAddr` with file/line info *(v1.3.0)*
-- ✅ **`includeStackTrace` flag** — suppress stack trace output on Windows & Linux *(v1.3.0)*
-- ✅ **DLL / shared library support** — plain C interface via `CrashCatchDLL.hpp` for C++11/C++98 consumers *(v1.3.0)*
+- ✅ **Header-only** single `.hpp`, no external dependencies
+- ✅ **Cross-platform** Windows & Linux support out of the box
+- ✅ **Accurate crash-site stack traces** Windows stack walk uses `ep->ContextRecord`, not the handler frame *(v1.4.0)*
+- ✅ **Async-signal-safe Linux handler** uses `fork()` so heap corruption can't deadlock the handler *(v1.4.0)*
+- ✅ **Callbacks fire after files are written** safe to read or upload from `onCrash` / `onCrashUpload` *(v1.4.0)*
+- ✅ **Thread-safe timestamps** `localtime_s` / `localtime_r` *(v1.4.0)*
+- ✅ **Automatic Crash Capture** via `SetUnhandledExceptionFilter` (Windows) or POSIX signals (Linux)
+- ✅ **Crash Context Info** includes executable path, build config, version, and notes
+- ✅ **Crash Reporting** `.dmp` (Windows) and `.txt` (Windows & Linux) crash files
+- ✅ **Symbol Resolution** `SymFromAddr` + file/line info (Windows), demangled symbols (Linux)
+- ✅ **`onCrash` Callback** run custom cleanup or logging with full crash context
+- ✅ **`onCrashUpload` Hook** pass report data to your custom uploader
+- ✅ **`includeStackTrace` flag** suppress stack trace output when not needed *(v1.3.0)*
+- ✅ **DLL / shared library support** plain C interface via `CrashCatchDLL.hpp` for C++11/C++98 consumers *(v1.3.0)*
+- ✅ **Optional Crash Dialog** user-friendly message box (Windows only)
+- ✅ **Configurable** dump location, filename prefix, timestamping, and more
+- ✅ **CMake + vcpkg + Conan** multiple install paths supported
 
 ---
 
 ## 📋 Requirements
 
-- C++17 or later
+- C++17 or later (or C++11/C++98/C via `CrashCatchDLL.hpp`)
 - **Windows**: MSVC (Visual Studio 2019+) or MinGW
 - **Linux**: GCC or Clang with `-rdynamic` for stack traces
 
@@ -188,30 +204,30 @@ Explore working examples in the GitHub repo:
 - [x] CMake install support
 - [x] DLL / shared library support (`CrashCatchDLL.hpp`)
 - [x] Windows stack trace in `.txt` log + `includeStackTrace` flag
+- [x] Accurate crash-site stack context
+- [x] Async-signal-safe Linux crash handler
+- [x] Thread-safe timestamps
+- [x] vcpkg and Conan package registry support
 - [ ] macOS support (POSIX + Mach exceptions)
-- [ ] vcpkg and Conan package registry support
 
 ---
 
-## 🔬 Understand Your Crashes — CrashCatch Labs
+## 🔬 Understand Your Crashes CrashCatch Analyzer
 
-CrashCatch generates the report. **[CrashCatch Labs](https://crashcatchlabs.com)** tells you what it means.
+CrashCatch generates the report. **[CrashCatch Analyzer](https://github.com/keithpotz/Crash-Catch-Analyzer-Release)** tells you what it means.
 
-CrashCatch Labs is a Windows-first crash analysis tool built specifically for C++ and Unreal Engine developers. Drop in a crash report and get:
+Drop in a crash report and get:
 
-- Symbolicated stack traces with engine frames filtered out
+- Symbolicated stack traces
 - Plain-English root cause explanation *(Explain Mode)*
 - Deep technical analysis for engineers *(Engineer Mode)*
 - PDF export for sharing with your team
 
-> Currently in development. **[Join the waitlist](https://crashcatchlabs.com/subscribe.html)** to get early access and launch pricing.
+> Currently in Beta. **[Download on GitHub](https://github.com/keithpotz/Crash-Catch-Analyzer-Release)**
 
 ---
 
 ## 📄 License
 
-MIT License — created and maintained by **Keith Pottratz**  
+MIT License — created and maintained by **Keith Pottratz**
 [GitHub Repo](https://github.com/keithpotz/CrashCatch)
-
-Created by **Keith Pottratz**  
-MIT Licensed

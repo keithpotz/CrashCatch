@@ -1,8 +1,8 @@
 # 🐧 Linux Support
 
-CrashCatch v1.2.0 provides robust, out-of-the-box crash handling for native Linux C++ applications using POSIX signals and `backtrace()`.
+CrashCatch provides robust, out-of-the-box crash handling for native Linux C++ applications using POSIX signals and `backtrace()`.
 
-It captures detailed crash context, generates a human-readable `.txt` report, and includes a demangled stack trace and environment info — all from a single header.
+It captures detailed crash context, generates a human-readable `.txt` report, and includes demangled stack traces and environment info all from a single header.
 
 ---
 
@@ -18,128 +18,138 @@ CrashCatch handles a wide set of fatal signals:
 | `SIGILL`   | Illegal instruction                        |
 | `SIGBUS`   | Bus error (e.g. misaligned memory access)  |
 
-> All signals trigger a crash log and invoke the optional `onCrash()` callback with full crash context.
+> All signals trigger a crash log and invoke the optional `onCrash()` and `onCrashUpload()` callbacks with full crash context.
 
 ---
 
-## 🧠 Additional Linux Features
+## 🧠 Linux Features
 
-- ✅ Signal name & number are logged in crash reports  
-- ✅ Full stack trace with demangled symbols (`__cxa_demangle`)  
-- ✅ Executable path detection via `/proc/self/exe`  
-- ✅ Crash context includes signal, timestamp, paths, and notes  
+- ✅ Signal name & number logged in crash reports
+- ✅ Async-signal-safe handler using `fork()` no deadlocks even on heap corruption *(v1.4.0)*
+- ✅ Demangled C++ symbol names in stack traces *(v1.4.0 properly extracts mangled name before demangling)*
+- ✅ Executable path detection via `/proc/self/exe`
+- ✅ Crash context includes signal, timestamp, paths, and notes
+- ✅ Callbacks fire after crash files are written *(v1.4.0)*
+- ✅ Thread-safe timestamp generation via `localtime_r` *(v1.4.0)*
 - ✅ Works in GUI and headless/CLI environments
 
 ---
 
+## ⚡ How the Handler Works (v1.4.0)
+
+Signal handlers in Linux are restricted to **async-signal-safe** functions only. Calling `malloc`, `std::string`, or file I/O directly from a signal handler is undefined behavior and can deadlock if the crash occurred mid-heap-operation.
+
+CrashCatch solves this with `fork()`:
+
+1. The signal fires the handler records the signal number and path strings
+2. `fork()` is called the child process inherits the parent's memory image
+3. The **child** performs all file I/O, stack trace generation, and callback execution — safely
+4. The **parent** waits for the child to finish, then calls `_exit()`
+
+This is the same pattern used by Google's Crashpad and Breakpad.
+
+---
 
 ## 📋 Output Format
 
-When a crash occurs, CrashCatch will:
+When a crash occurs, CrashCatch creates a `.txt` log in `./crash_dumps/` (configurable) containing:
 
-- Create a folder like `./crash_dumps/`
-- Save a `.txt` log file including:
-  - Timestamp
-  - Stack trace (via `backtrace()`)
-  - Application version & build config
-  - Executable path
-  - Any additional notes set in config
+- Timestamp
+- Signal name and number
+- Stack trace with demangled C++ symbols
+- Application version and build config
+- Executable path
+- Any additional notes set in config
 
----
----
 ### 🧾 Example Output
 
 ```text
 Crash Report
 ============
 Signal: Segmentation fault (11)
-Timestamp: 2025-04-04_23-07-34
+Timestamp: 2026-03-20_09-15-23
 
 Environment Info:
-App Version: unknown
+App Version: 2.0.0
 Build Config: Release
 Platform: Linux
-Executable: /home/keith/crashcatch/build/CrashCatchTest
-
+Executable: /home/user/myapp
 
 Stack Trace:
-  [0]: ./CrashCatchTest(+0x4936) [0x5b96db8be936]
-  [1]: ./CrashCatchTest(+0x4daf) [0x5b96db8bedaf]
-  [2]: /lib/x86_64-linux-gnu/libc.so.6(+0x45330) [0x754c6ea45330]
-  [3]: ./CrashCatchTest(+0x3abd) [0x5b96db8bdabd]
-  [4]: ./CrashCatchTest(+0x6dcd) [0x5b96db8c0dcd]
-  [5]: ./CrashCatchTest(+0x6d79) [0x5b96db8c0d79]
-  [6]: ./CrashCatchTest(+0x6d1a) [0x5b96db8c0d1a]
-  [7]: ./CrashCatchTest(+0x6cea) [0x5b96db8c0cea]
-  [8]: ./CrashCatchTest(+0x6cca) [0x5b96db8c0cca]
-  [9]: /lib/x86_64-linux-gnu/libstdc++.so.6(+0xecdb4) [0x754c6eeecdb4]
-  [10]: /lib/x86_64-linux-gnu/libc.so.6(+0x9caa4) [0x754c6ea9caa4]
-  [11]: /lib/x86_64-linux-gnu/libc.so.6(+0x129c3c) [0x754c6eb29c3c]
+  [0]: ./myapp(MyClass::crashingMethod()+0x42) [0x401234]
+  [1]: ./myapp(main+0x1f) [0x401100]
+  [2]: libc.so.6(__libc_start_main+0xf3) [0x7f...]
 ```
+
+> Compile with `-rdynamic` to get function names in stack frames.
+
 ---
----
+
 ## Testing Linux Crashes
+
 ### Null Pointer
-
 ```cpp
 #include "CrashCatch.hpp"
-int* ptr = nullptr;
-*ptr = 42; // SIGSEGV
 
-return 0;
-```
-### Divide by zero
-```cpp
-#include "CrashCatch.hpp"
 int main() {
-    int zero = 0;
-    int crash = 1 / zero;
-
-    retrun crash;
+    CrashCatch::enable();
+    int* ptr = nullptr;
+    *ptr = 42; // SIGSEGV
+    return 0;
 }
 ```
+
+### Divide by Zero
+```cpp
+#include "CrashCatch.hpp"
+
+int main() {
+    CrashCatch::enable();
+    int zero = 0;
+    int crash = 1 / zero; // SIGFPE
+    return crash;
+}
+```
+
 ### Threaded Fault
 ```cpp
 #include <thread>
 #include "CrashCatch.hpp"
- void crashFunc(){
+
+void crashFunc() {
     int* p = nullptr;
-    *p = 5;
- }
- int main() {
+    *p = 5; // SIGSEGV from background thread
+}
+
+int main() {
+    CrashCatch::enable();
     std::thread t(crashFunc);
     t.join();
- }
- ```
- ---
-
- ---
- ## CMake Setup
- No special setup is required on Linux. Simply include the header and optionalling link with `-rdynamic` to improve symbol resolution
- ```cmake
- g++ -std=c++17 main.cpp -rdynamic -o crash_app
- ```
- `-rdynamic` allows symbol names to appear in stack traces generated by `backtrace_symbol()`
- ---
- ---
- ## 🚧 Known Limitations
-* Crash logs are `.txt` only — no core dump or `.dmp` generation yet
-
-* Stack traces may not always show full function names without `-rdynamic`
-
-* GUI message boxes are not supported on Linux (yet)
----
+}
+```
 
 ---
-## 📦 Future Improvements
-* Signal handler chaining (to avoid interfering with other handlers)
 
-* Optional generation of Linux core dumps
+## CMake Setup
 
-* Demangling of C++ function names
+No special setup is required on Linux. Simply include the header and optionally link with `-rdynamic` to improve symbol resolution:
 
-* macOS crash handling support
+```cmake
+target_link_options(MyApp PRIVATE -rdynamic)
+```
 
-* JSON-based crash logs
+Or using the compiler directly:
+
+```bash
+g++ -std=c++17 main.cpp -rdynamic -o myapp
+```
+
+`-rdynamic` allows symbol names to appear in stack traces generated by `backtrace_symbols()`.
 
 ---
+
+## 🚧 Known Limitations
+
+- Crash logs are `.txt` only on Linux  `.dmp` MiniDump format is Windows only
+- Stack traces may not show full function names without `-rdynamic`
+- GUI message boxes are not supported on Linux

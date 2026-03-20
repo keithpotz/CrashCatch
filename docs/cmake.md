@@ -1,6 +1,6 @@
 # ⚙️ CMake Integration
 
-CrashCatch supports **modern CMake** out of the box, with both **header-only subdirectory usage** and **installable package support** for larger or multi-project environments.
+CrashCatch supports **modern CMake** out of the box, with both **header-only subdirectory usage** and **installable package support** for larger or multi-project environments. It is also available via **vcpkg** and **Conan**.
 
 ---
 
@@ -15,7 +15,7 @@ add_executable(MyApp main.cpp)
 target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
 ```
 
-This method is great for embedded or monorepo-style projects. It ensures that the CrashCatch target `INTERFACE ` only is available immediatly without installation.
+This method is great for embedded or monorepo-style projects. The CrashCatch `INTERFACE` target is available immediately without installation.
 
 ---
 
@@ -32,7 +32,9 @@ cmake --build . --target install
 This will generate:
 ```
 install/
-├── include/CrashCatch.hpp
+├── include/
+│   ├── CrashCatch.hpp
+│   └── CrashCatchDLL.hpp
 └── lib/cmake/CrashCatch/
     ├── CrashCatchConfig.cmake
     └── CrashCatchTargets.cmake
@@ -42,7 +44,7 @@ install/
 
 ## 🔍 Using find_package()
 
-If you've installed CrashCatch via `cmake --install`, it can be imported in another project.
+If you've installed CrashCatch via `cmake --install`, it can be imported in another project:
 
 ```cmake
 find_package(CrashCatch REQUIRED)
@@ -51,12 +53,74 @@ target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
 ```
 
 CMake will locate the headers and preconfigured target with no additional setup.
->**Linux Note:** You may optionally add `-rdynamic` or link `-ldl` for bettery symbol resolution during stack tracing:
+
+> **Linux Note:** Add `-rdynamic` for better symbol resolution in stack traces:
 ```cmake
 target_link_options(MyApp PRIVATE -rdynamic)
-``` 
+```
+
+---
+
+## 📦 vcpkg
+
+CrashCatch is available as a vcpkg port. If you have vcpkg installed:
+
+```bash
+vcpkg install crashcatch
+```
+
+Then in your `CMakeLists.txt`:
+
+```cmake
+find_package(CrashCatch CONFIG REQUIRED)
+target_link_libraries(MyApp PRIVATE CrashCatch::CrashCatch)
+```
+
+Pass your vcpkg toolchain file when configuring:
+
+```bash
+cmake .. -DCMAKE_TOOLCHAIN_FILE=/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
+```
+
+Or use a `vcpkg.json` manifest in your project root:
+
+```json
+{
+  "dependencies": [ "crashcatch" ]
+}
+```
+
+---
+
+## 🐍 Conan
+
+CrashCatch is available as a Conan package. Add it to your `conanfile.txt`:
+
+```ini
+[requires]
+crashcatch/1.4.0
+
+[generators]
+CMakeDeps
+CMakeToolchain
+```
+
+Then install and configure:
+
+```bash
+conan install . --output-folder=build --build=missing
+cmake .. -DCMAKE_TOOLCHAIN_FILE=build/conan_toolchain.cmake
+```
+
+Or in a `conanfile.py`:
+
+```python
+def requirements(self):
+    self.requires("crashcatch/1.4.0")
+```
 
 ---
 
 ## 🧪 Example
-See [`examples/`](../examples/) folder for fully working sample projects that compile with CMake.
+
+See the [`examples/`](../examples/) folder for fully working sample projects that compile with CMake.
