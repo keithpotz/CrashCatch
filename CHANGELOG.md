@@ -2,7 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
-# Changelog
+---
+
+## [1.4.0] - 2026-03-20
+
+### Fixed
+
+- **Windows stack trace pointed at the handler, not the crash site** — `writeCrashLog` previously called `RtlCaptureContext` from inside the exception handler, capturing the handler's own stack. The actual crash context (`ep->ContextRecord`) is now passed through and used for the stack walk. Frame `[0]` now correctly shows the function that crashed.
+- **`onCrash` and `onCrashUpload` fired before files existed** — Both callbacks previously received file paths that had not yet been written to disk, making it impossible to safely read or upload them from within the callback. Callbacks now fire after all files are fully written.
+- **`SymInitialize` called inside the crash handler** — Symbol initialization was deferred until crash time, which is slow and can conflict with other DbgHelp users. `SymInitialize` is now called once during `CrashCatch::initialize()` at startup.
+- **Linux signal handler was not async-signal-safe** — The handler called heap-allocating functions (`std::string`, `std::ofstream`, `backtrace_symbols`, `abi::__cxa_demangle`) directly from a POSIX signal handler. These are not on the async-signal-safe list and can deadlock or crash again if the heap is corrupt. The handler now uses `fork()`: the child process performs all I/O and callback work; the parent calls `_exit()`. This is the same pattern used by Crashpad and Breakpad.
+- **Linux symbol demangling applied to full backtrace string instead of mangled name** — `backtrace_symbols()` returns strings like `./app(_Z3foov+0x10) [0x...]`. Passing the whole string to `__cxa_demangle` always failed. The mangled name is now extracted from between `(` and `+` before demangling, producing readable output like `./app(MyClass::myMethod()+0x10) [0x...]`.
+- **`localtime` is not thread-safe** — Replaced with `localtime_s` (Windows) and `localtime_r` (Linux), both of which write into a caller-supplied struct rather than returning a pointer to shared static data.
+- **`create_directories` result was silently ignored** — Failure to create the output directory now causes early exit rather than writing to an invalid path. Uses `std::error_code` overload to avoid exceptions.
+- **`CrashContext` was constructed twice per crash** — One instance was built for `onCrash` and a second identical one for `onCrashUpload`. A single context object is now built once and shared between both callbacks.
+- **Version comment in `CrashCatch.hpp` was out of date** — Header comment said `Version 1.2.0`; updated to `1.3.0` and now `1.4.0`.
+
+### Added
+
+- `tests/test_callback_order.cpp` — Verifies that the crash log file exists on disk when `onCrash` fires.
+- `tests/test_stack_context.cpp` — Verifies that the stack trace frame `[0]` is the actual crash-site function, not an internal handler frame.
+
+---
+
+## [1.3.0] - 2025-05-01
+
+### Added
+
+- **Windows stack trace in `.txt` log** — `StackWalk64` + `SymFromAddr` + `SymGetLineFromAddr64` provide function names and file/line numbers directly in the human-readable crash report.
+- **`includeStackTrace` config flag** — Set to `false` to suppress stack trace output on both Windows and Linux.
+- **`CrashCatchDLL.hpp`** — Plain C interface (`extern "C"`) so C++11, C++98, and C projects can use CrashCatch by linking against a pre-compiled DLL or shared library. Consumers do not need C++17.
+- **`crashcatch_version()`** — Returns the version string from the DLL (`"1.3.0"`).
+- **`crashcatch_default_config()`** — Returns a `CrashCatch_Config` populated with sensible defaults.
+
+---
 
 ## [1.2.0] - 2025-04-17
 

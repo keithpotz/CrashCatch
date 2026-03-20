@@ -2,7 +2,7 @@
 
 /*
 CrashCatchDLL - C interface wrapper for CrashCatch
-Version 1.3.0
+Version 1.4.0
 Created by Keith Pottratz
 License: MIT
 
@@ -118,7 +118,7 @@ CRASHCATCH_API int crashcatch_init(const CrashCatch_Config* config);
 CRASHCATCH_API int crashcatch_enable(void);
 
 /**
- * Returns the CrashCatch version string, e.g. "1.3.0".
+ * Returns the CrashCatch version string, e.g. "1.4.0".
  */
 CRASHCATCH_API const char* crashcatch_version(void);
 
@@ -200,7 +200,7 @@ CRASHCATCH_API int crashcatch_enable(void) {
 }
 
 CRASHCATCH_API const char* crashcatch_version(void) {
-    return "1.3.0";
+    return "1.4.0";
 }
 
 #ifdef __cplusplus

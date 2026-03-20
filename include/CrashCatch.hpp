@@ -2,7 +2,7 @@
 
 /*
 CrashCatch - A simple cross-platform crash handler
-Version 1.2.0
+Version 1.4.0
 Created by Keith Pottratz
 Email: keithpotz@gmail.com
 License: MIT
@@ -30,6 +30,7 @@ License: MIT
 #include <limits.h>
 #include <cxxabi.h>
 #include <string.h>
+#include <sys/wait.h>
 #endif
 
 namespace CrashCatch {
@@ -64,12 +65,24 @@ namespace CrashCatch {
 
     inline Config globalConfig; // Global configuration
 
+#ifdef CRASHCATCH_PLATFORM_WINDOWS
+    // Set by UnhandledExceptionHandler so writeCrashLog can walk the crash-site stack,
+    // not the handler's own stack. Only valid during crash handling.
+    inline CONTEXT* g_crashSiteContext = nullptr;
+#endif
+
     // Generate timestamp string (YYYY-MM-DD_HH-MM-SS)
     inline std::string getTimestamp() {
         auto now = std::chrono::system_clock::now();
         auto time = std::chrono::system_clock::to_time_t(now);
+        std::tm tm_result = {};
+#ifdef CRASHCATCH_PLATFORM_WINDOWS
+        localtime_s(&tm_result, &time);  // thread-safe on Windows
+#else
+        localtime_r(&time, &tm_result);  // thread-safe on POSIX
+#endif
         std::stringstream ss;
-        ss << std::put_time(std::localtime(&time), "%Y-%m-%d_%H-%M-%S");
+        ss << std::put_time(&tm_result, "%Y-%m-%d_%H-%M-%S");
         return ss.str();
     }
 
@@ -91,14 +104,30 @@ namespace CrashCatch {
     }
 
 #ifdef CRASHCATCH_PLATFORM_LINUX
-    // Demangle C++ symbol names from backtrace
+    // Demangle a C++ symbol name.
+    // backtrace_symbols() returns strings like "./app(_Z3foov+0x10) [0x7f...]".
+    // We extract just the mangled name between '(' and '+' before demangling.
     inline std::string demangle(const char* symbol) {
-        size_t size;
-        int status;
-        char* demangled = abi::__cxa_demangle(symbol, nullptr, &size, &status);
-        std::string result = (status == 0) ? demangled : symbol;
-        free(demangled);
-        return result;
+        std::string sym(symbol);
+
+        // Extract mangled name: between '(' and '+'
+        auto parenOpen  = sym.find('(');
+        auto plusSign   = sym.find('+', parenOpen);
+        if (parenOpen != std::string::npos && plusSign != std::string::npos && plusSign > parenOpen + 1) {
+            std::string mangled = sym.substr(parenOpen + 1, plusSign - parenOpen - 1);
+            size_t size = 0;
+            int status  = 0;
+            char* demangled = abi::__cxa_demangle(mangled.c_str(), nullptr, &size, &status);
+            if (status == 0 && demangled) {
+                std::string result = sym.substr(0, parenOpen + 1)
+                                   + demangled
+                                   + sym.substr(plusSign);
+                free(demangled);
+                return result;
+            }
+            if (demangled) free(demangled);
+        }
+        return sym; // return original if no mangled segment found or demangle failed
     }
 #endif
 
@@ -121,6 +150,10 @@ namespace CrashCatch {
 
     // Write human-readable crash report to .txt file
     inline void writeCrashLog(const std::string& logPath, const std::string& timestamp, int signal = 0) {
+        std::error_code ec;
+        std::filesystem::create_directories(std::filesystem::path(logPath).parent_path(), ec);
+        if (ec) return; // can't create output directory — bail out silently
+
         std::ofstream log(logPath);
         if (!log.is_open()) return;
 
@@ -135,14 +168,18 @@ namespace CrashCatch {
 #ifdef CRASHCATCH_PLATFORM_WINDOWS
         if (globalConfig.includeStackTrace) {
             // Walk the stack using DbgHelp (already linked via pragma comment)
+            // SymInitialize was called at CrashCatch::initialize() time
             HANDLE process = GetCurrentProcess();
             HANDLE thread  = GetCurrentThread();
 
-            SymInitialize(process, nullptr, TRUE);
-
-            CONTEXT context = {};
-            context.ContextFlags = CONTEXT_FULL;
-            RtlCaptureContext(&context);
+            // Use crash-site context if available (set by exception handler),
+            // otherwise fall back to capturing here (e.g. called standalone).
+            CONTEXT localContext = {};
+            CONTEXT& context = g_crashSiteContext ? *g_crashSiteContext : localContext;
+            if (!g_crashSiteContext) {
+                localContext.ContextFlags = CONTEXT_FULL;
+                RtlCaptureContext(&localContext);
+            }
 
             STACKFRAME64 frame = {};
 #if defined(_M_X64)
@@ -201,7 +238,6 @@ namespace CrashCatch {
                 if (frameIndex > 64) break;
             }
 
-            SymCleanup(process);
         }
 #endif
 
@@ -234,12 +270,12 @@ namespace CrashCatch {
         std::string dumpPath = globalConfig.dumpFolder + base + ".dmp";
         std::string logPath = globalConfig.dumpFolder + base + ".txt";
 
-        std::filesystem::create_directories(globalConfig.dumpFolder);
+        std::error_code ec;
+        std::filesystem::create_directories(globalConfig.dumpFolder, ec);
+        if (ec) return EXCEPTION_EXECUTE_HANDLER; // can't create output directory
 
-        if (globalConfig.onCrash) {
-            CrashContext context{ dumpPath, logPath, timestamp, static_cast<int>(code) };
-            globalConfig.onCrash(context);
-        }
+        // Point the stack walker at the actual crash site, not the handler frame
+        g_crashSiteContext = ep->ContextRecord;
 
         HANDLE hFile = CreateFileA(dumpPath.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (hFile != INVALID_HANDLE_VALUE) {
@@ -257,8 +293,14 @@ namespace CrashCatch {
             }
         }
 
+        // Build context once, after files are written, so callbacks can access them
+        CrashContext context{ dumpPath, logPath, timestamp, static_cast<int>(code) };
+
+        if (globalConfig.onCrash) {
+            globalConfig.onCrash(context);
+        }
+
         if (globalConfig.onCrashUpload) {
-            CrashContext context{ dumpPath, logPath, timestamp, static_cast<int>(code) };
             globalConfig.onCrashUpload(context);
         }
 
@@ -267,26 +309,45 @@ namespace CrashCatch {
 #endif
 
 #ifdef CRASHCATCH_PLATFORM_LINUX
-    // POSIX signal handler (Linux only)
+    // POSIX signal handler (Linux only).
+    //
+    // Signal handlers must only call async-signal-safe functions (see signal-safety(7)).
+    // Heap allocation, std::string, file I/O, and C++ exceptions are NOT safe to call
+    // directly from a signal handler.
+    //
+    // Solution: fork() a child process to do all the heavy work (logging, callbacks).
+    // The child inherits the parent's memory image but runs in a clean execution context
+    // where malloc locks are not held. The parent simply _exit()s immediately.
     inline void linuxSignalHandler(int signum) {
+        // Build paths before fork using only already-constructed std::strings.
+        // These copies are safe because we're single-threaded at the point of the crash
+        // signal delivery (the faulting thread is the only one executing here).
         std::string timestamp = globalConfig.autoTimestamp ? getTimestamp() : "";
         std::string base = globalConfig.dumpFileName + (timestamp.empty() ? "" : ("_" + timestamp));
         std::string logPath = globalConfig.dumpFolder + base + ".txt";
 
-        std::filesystem::create_directories(globalConfig.dumpFolder);
+        pid_t pid = fork();
+        if (pid == 0) {
+            // Child process: safe to use heap, file I/O, std::string, etc.
+            writeCrashLog(logPath, timestamp, signum);
 
-        if (globalConfig.onCrash) {
+            // Build context once, after file is written, so callbacks can access it
             CrashContext context{ "", logPath, timestamp, signum };
-            globalConfig.onCrash(context);
+
+            if (globalConfig.onCrash) {
+                globalConfig.onCrash(context);
+            }
+
+            if (globalConfig.onCrashUpload) {
+                globalConfig.onCrashUpload(context);
+            }
+
+            _exit(0);
+        } else if (pid > 0) {
+            // Parent: wait for child to finish writing the report, then exit
+            waitpid(pid, nullptr, 0);
         }
-
-        writeCrashLog(logPath, timestamp, signum);
-
-        if (globalConfig.onCrashUpload) {
-            CrashContext context{ "", logPath, timestamp, signum };
-            globalConfig.onCrashUpload(context);
-        }
-
+        // pid < 0 means fork failed — fall through and exit anyway
         _exit(1);
     }
 #endif
@@ -295,6 +356,8 @@ namespace CrashCatch {
     inline bool initialize(const Config& config = Config()) {
         globalConfig = config;
 #ifdef CRASHCATCH_PLATFORM_WINDOWS
+        // Load symbols now so they're ready when a crash occurs
+        SymInitialize(GetCurrentProcess(), nullptr, TRUE);
         SetUnhandledExceptionFilter(UnhandledExceptionHandler);
 #elif defined(CRASHCATCH_PLATFORM_LINUX)
         signal(SIGSEGV, linuxSignalHandler);
