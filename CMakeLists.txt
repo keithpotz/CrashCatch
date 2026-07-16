@@ -13,6 +13,10 @@ elseif(UNIX AND NOT APPLE)
     message(STATUS "Target platform: Linux")
     set(CRASHCATCH_PLATFORM_DEFINES)
     set(CRASHCATCH_PLATFORM_LIBS pthread) # For completeness, though not strictly required
+    # -rdynamic exports symbols to the dynamic symbol table so backtrace_symbols()
+    # can resolve function names instead of just addresses.
+    add_compile_options(-g)
+    add_link_options(-rdynamic)
 endif()
 
 # === Define CrashCatch Header-Only Library ===

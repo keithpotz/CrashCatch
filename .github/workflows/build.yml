@@ -1,4 +1,4 @@
-name: Build Examples
+name: Build and Test
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  windows:
     runs-on: windows-latest
     steps:
       - name: Checkout repository
@@ -19,5 +19,61 @@ jobs:
       - name: Configure CMake
         run: cmake -S . -B build
 
-      - name: Build Examples
-        run: cmake --build build --config Release
+      - name: Build
+        # RelWithDebInfo (not Release) so PDBs are emitted — SymFromAddr has
+        # nothing to resolve function names against otherwise.
+        run: cmake --build build --config RelWithDebInfo
+
+      - name: Run test_callback_order (expected to crash)
+        shell: pwsh
+        run: |
+          & ".\build\RelWithDebInfo\test_callback_order.exe"
+          exit 0
+
+      - name: Verify test_callback_order
+        shell: pwsh
+        run: |
+          $sentinel = Get-Content ".\test_crash_output\sentinel.txt" -Raw
+          Write-Host $sentinel
+          if ($sentinel -notmatch "PASS") { throw "test_callback_order failed: $sentinel" }
+
+      - name: Run test_stack_context (expected to crash)
+        shell: pwsh
+        run: |
+          & ".\build\RelWithDebInfo\test_stack_context.exe"
+          exit 0
+
+      - name: Verify test_stack_context
+        shell: pwsh
+        run: |
+          $sentinel = Get-Content ".\test_stack_output\sentinel.txt" -Raw
+          Write-Host $sentinel
+          if ($sentinel -notmatch "PASS") { throw "test_stack_context failed: $sentinel" }
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Run test_callback_order (expected to crash)
+        run: ./build/test_callback_order || true
+
+      - name: Verify test_callback_order
+        run: |
+          cat ./test_crash_output/sentinel.txt
+          grep -q "PASS" ./test_crash_output/sentinel.txt
+
+      - name: Run test_stack_context (expected to crash)
+        run: ./build/test_stack_context || true
+
+      - name: Verify test_stack_context
+        run: |
+          cat ./test_stack_output/sentinel.txt
+          grep -q "PASS" ./test_stack_output/sentinel.txt
