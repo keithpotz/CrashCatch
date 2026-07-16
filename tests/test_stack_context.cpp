@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <cstdint>
 
 // noinline: without it, Release-mode optimizers are free to inline this straight
 // into main(), which would erase the frame this test is checking for.
@@ -14,8 +15,9 @@
 
 // This function is the actual crash site. Its name should appear in the stack trace.
 // Give it a unique, obviously-named function so we can grep for it.
+static volatile std::uintptr_t gCrashAddress = 0;
 CRASHCATCH_TEST_NOINLINE void crashSiteFunction() {
-    int* ptr = nullptr;
+    auto* ptr = reinterpret_cast<volatile int*>(gCrashAddress);
     *ptr = 42; // crash here
 }
 
