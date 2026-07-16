@@ -115,6 +115,8 @@ int main() {
 | Linux | ✅ Supported | POSIX signals + `backtrace()` + `fork()` for safe I/O |
 | macOS | Planned | POSIX + Mach exceptions |
 
+Both Windows and Linux builds run in CI on every push, including crash-handler tests that trigger a real crash and verify the resulting log/dump.
+
 ---
 
 ## Installing with CMake
