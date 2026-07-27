@@ -37,15 +37,15 @@ namespace CrashCatch {
 
     // Context data passed to crash callback (onCrash, onCrashUpload)
     struct CrashContext {
-        std::string dumpFilePath = "";  // .dmp (Windows) or blank (Linux)
-        std::string logFilePath = "";   // .txt summary log
-        std::string timestamp = "";     // Crash timestamp
+        std::filesystem::path dumpFilePath;  // .dmp (Windows) or blank (Linux)
+        std::filesystem::path logFilePath;   // .txt summary log
+        std::string timestamp;     // Crash timestamp
         int signalOrCode = 0;           // Signal or exception code
     };
 
     // Configuration structure for CrashCatch behavior
     struct Config {
-        std::string dumpFolder = "./crash_dumps/";   // Where to save crash files
+        std::filesystem::path dumpFolder = "./crash_dumps/";   // Where to save crash files
         std::string dumpFileName = "crash";          // Base name (timestamp added optionally)
         bool enableTextLog = true;                   // Output .txt human-readable crash report
         bool autoTimestamp = true;                   // Auto-append timestamp to filenames
@@ -149,9 +149,9 @@ namespace CrashCatch {
     }
 
     // Write human-readable crash report to .txt file
-    inline void writeCrashLog(const std::string& logPath, const std::string& timestamp, int signal = 0) {
+    inline void writeCrashLog(const std::filesystem::path& logPath, const std::string& timestamp, int signal = 0) {
         std::error_code ec;
-        std::filesystem::create_directories(std::filesystem::path(logPath).parent_path(), ec);
+        std::filesystem::create_directories(logPath.parent_path(), ec);
         if (ec) return; // can't create output directory — bail out silently
 
         std::ofstream log(logPath);
@@ -265,10 +265,16 @@ namespace CrashCatch {
             return EXCEPTION_CONTINUE_SEARCH;
         }
 
-        std::string timestamp = globalConfig.autoTimestamp ? getTimestamp() : "";
-        std::string base = globalConfig.dumpFileName + (timestamp.empty() ? "" : ("_" + timestamp));
-        std::string dumpPath = globalConfig.dumpFolder + base + ".dmp";
-        std::string logPath = globalConfig.dumpFolder + base + ".txt";
+        const std::string timestamp = globalConfig.autoTimestamp ? getTimestamp() : "";
+        const std::string base = globalConfig.dumpFileName + (timestamp.empty() ? "" : ("_" + timestamp));
+     
+        std::filesystem::path dumpPath = globalConfig.dumpFolder / base;
+        dumpPath.replace_extension(".dmp");
+        
+        std::filesystem::path logPath = globalConfig.dumpFolder / base;
+        logPath.replace_extension(".txt");
+
+        const std::wstring dumpFilepathStr = dumpPath.wstring();
 
         std::error_code ec;
         std::filesystem::create_directories(globalConfig.dumpFolder, ec);
@@ -277,7 +283,7 @@ namespace CrashCatch {
         // Point the stack walker at the actual crash site, not the handler frame
         g_crashSiteContext = ep->ContextRecord;
 
-        HANDLE hFile = CreateFileA(dumpPath.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        HANDLE hFile = CreateFileW(dumpFilepathStr.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (hFile != INVALID_HANDLE_VALUE) {
             MINIDUMP_EXCEPTION_INFORMATION dumpInfo = { GetCurrentThreadId(), ep, FALSE };
             MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, MiniDumpWithDataSegs, &dumpInfo, nullptr, nullptr);
@@ -288,8 +294,8 @@ namespace CrashCatch {
             }
 
             if (globalConfig.showCrashDialog) {
-                std::string msg = "Crash occurred. Dump written to:\n" + dumpPath;
-                MessageBoxA(nullptr, msg.c_str(), "Crash Detected", MB_OK | MB_ICONERROR);
+                std::wstring msg = L"Crash occurred. Dump written to:\n" + dumpFilepathStr;
+                MessageBoxW(nullptr, msg.c_str(), L"Crash Detected", MB_OK | MB_ICONERROR);
             }
         }
 
@@ -322,9 +328,11 @@ namespace CrashCatch {
         // Build paths before fork using only already-constructed std::strings.
         // These copies are safe because we're single-threaded at the point of the crash
         // signal delivery (the faulting thread is the only one executing here).
-        std::string timestamp = globalConfig.autoTimestamp ? getTimestamp() : "";
-        std::string base = globalConfig.dumpFileName + (timestamp.empty() ? "" : ("_" + timestamp));
-        std::string logPath = globalConfig.dumpFolder + base + ".txt";
+        const std::string timestamp = globalConfig.autoTimestamp ? getTimestamp() : "";
+        const std::string base = globalConfig.dumpFileName + (timestamp.empty() ? "" : ("_" + timestamp));
+        
+        std::filesystem::path logPath = globalConfig.dumpFolder / base;
+        logPath.replace_extension(".txt");
 
         pid_t pid = fork();
         if (pid == 0) {
