@@ -268,11 +268,8 @@ namespace CrashCatch {
         const std::string timestamp = globalConfig.autoTimestamp ? getTimestamp() : "";
         const std::string base = globalConfig.dumpFileName + (timestamp.empty() ? "" : ("_" + timestamp));
      
-        std::filesystem::path dumpPath = globalConfig.dumpFolder / base;
-        dumpPath.replace_extension(".dmp");
-        
-        std::filesystem::path logPath = globalConfig.dumpFolder / base;
-        logPath.replace_extension(".txt");
+		const std::filesystem::path dumpPath = globalConfig.dumpFolder / ( base + ".dmp" );
+		const std::filesystem::path logPath = globalConfig.dumpFolder / ( base + ".txt" );
 
         const std::wstring dumpFilepathStr = dumpPath.wstring();
 
@@ -331,8 +328,7 @@ namespace CrashCatch {
         const std::string timestamp = globalConfig.autoTimestamp ? getTimestamp() : "";
         const std::string base = globalConfig.dumpFileName + (timestamp.empty() ? "" : ("_" + timestamp));
         
-        std::filesystem::path logPath = globalConfig.dumpFolder / base;
-        logPath.replace_extension(".txt");
+        const std::filesystem::path logPath = globalConfig.dumpFolder / ( base + ".txt" );
 
         pid_t pid = fork();
         if (pid == 0) {
