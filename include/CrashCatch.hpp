@@ -24,6 +24,13 @@ License: MIT
 #pragma comment(lib, "dbgHelp.lib") //Auto-link debugging support library
 #elif defined(__linux__)
 #define CRASHCATCH_PLATFORM_LINUX
+#elif defined(__APPLE__)
+#define CRASHCATCH_PLATFORM_MACOS
+#include <mach-o/dyld.h> // For _NSGetExecutablePath
+#endif
+
+// Common POSIX include across both macOS and Linux.
+#if defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
 #include <signal.h>
 #include <execinfo.h>
 #include <unistd.h>
@@ -100,6 +107,13 @@ namespace CrashCatch {
             return std::string(path);
         }
         return "(unknown)";
+
+#elif defined(CRASHCATCH_PLATFORM_MACOS)
+        char buffer[PATH_MAX];
+        uint32_t maxPath = PATH_MAX;
+        _NSGetExecutablePath(buffer, &maxPath);
+
+        return std::string(buffer);
 #endif
     }
 
@@ -129,6 +143,35 @@ namespace CrashCatch {
         }
         return sym; // return original if no mangled segment found or demangle failed
     }
+#elif defined(CRASHCATCH_PLATFORM_MACOS)
+    inline std::string demangle(const char* symbol) {
+        std::istringstream iss(symbol);
+
+        int frame;
+        std::string module;
+        std::string address;
+
+        if (!(iss >> frame >> module >> address))
+            return std::string(symbol);
+
+        std::string symbolStr;
+        iss >> symbolStr;
+
+        std::string offset;
+        std::getline(iss, offset);
+
+        int status = 0;
+        size_t size = 0;
+        char* demangled = abi::__cxa_demangle( symbolStr.c_str(), nullptr, &size, &status );
+
+        if( status != 0 )
+         return symbolStr;
+
+        std::ostringstream out;
+        out << demangled << offset;
+
+        return out.str();
+    }
 #endif
 
     // Collect system/app info for inclusion in crash logs
@@ -140,6 +183,8 @@ namespace CrashCatch {
         ss << "Platform: Windows\n";
 #elif defined(CRASHCATCH_PLATFORM_LINUX)
         ss << "Platform: Linux\n";
+#elif defined(CRASHCATCH_PLATFORM_MACOS)
+        ss << "Platform: macOS\n";
 #endif
         ss << "Executable: " << getExecutablePath() << "\n";
         if (!globalConfig.additionalNotes.empty()) {
@@ -159,7 +204,7 @@ namespace CrashCatch {
 
         log << "Crash Report\n============\n";
 
-#ifdef CRASHCATCH_PLATFORM_LINUX
+#if defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
         log << "Signal: " << strsignal(signal) << " (" << signal << ")\n";
 #endif
         log << "Timestamp: " << (timestamp.empty() ? "N/A" : timestamp) << "\n\n";
@@ -241,7 +286,7 @@ namespace CrashCatch {
         }
 #endif
 
-#ifdef CRASHCATCH_PLATFORM_LINUX
+#if defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
         if (globalConfig.includeStackTrace) {
             void* callstack[128];
             int frames = backtrace(callstack, 128);
@@ -311,8 +356,8 @@ namespace CrashCatch {
     }
 #endif
 
-#ifdef CRASHCATCH_PLATFORM_LINUX
-    // POSIX signal handler (Linux only).
+#if defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
+    // POSIX signal handler.
     //
     // Signal handlers must only call async-signal-safe functions (see signal-safety(7)).
     // Heap allocation, std::string, file I/O, and C++ exceptions are NOT safe to call
@@ -363,7 +408,7 @@ namespace CrashCatch {
         // Load symbols now so they're ready when a crash occurs
         SymInitialize(GetCurrentProcess(), nullptr, TRUE);
         SetUnhandledExceptionFilter(UnhandledExceptionHandler);
-#elif defined(CRASHCATCH_PLATFORM_LINUX)
+#elif defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
         signal(SIGSEGV, linuxSignalHandler);
         signal(SIGABRT, linuxSignalHandler);
         signal(SIGFPE, linuxSignalHandler);
@@ -384,4 +429,3 @@ namespace CrashCatch {
 #endif
 
 } // namespace CrashCatch
-
