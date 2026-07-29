@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.5.0] - 2026-07-29
+
+### Changed
+
+- **BREAKING: `Config::dumpFolder` and `CrashContext::dumpFilePath` / `logFilePath` are now `std::filesystem::path` instead of `std::string`.** Code that consumed these fields as strings needs to call `.string()` or accept `const std::filesystem::path&` instead. `examples/Example_UploadCrash.cpp` updated to match.
+
+### Fixed
+
+- **`dumpFolder` required a trailing path separator** — output paths were built via raw string concatenation, so a `dumpFolder` without a trailing `/`/`\` produced a malformed path. Path composition now uses `std::filesystem::path`'s `/` operator.
+- **Filenames containing a dot could be truncated** — an intermediate fix used `replace_extension()`, which strips everything after the last dot in the whole path (e.g. `"MyApp.Build1"` → `MyApp.dmp`). Final fix builds the full filename as one string before appending it as a single path component.
+- **Non-ASCII crash file paths were mangled on Windows** — `CreateFileA`/`MessageBoxA` replaced with `CreateFileW`/`MessageBoxW`.
+- **`CrashCatchDLL.hpp` (C API) Unicode support** — `on_crash`/`on_crash_upload` now receive UTF-8 encoded paths (`path::u8string()` instead of `path::c_str()`, which returned `wchar_t*` on Windows and didn't compile); `CrashCatch_Config::dump_folder` is now interpreted as UTF-8 (`std::filesystem::u8path()`) instead of the local codepage. Callback signatures remain `const char*` on both platforms.
+
+### Credits
+
+- `std::filesystem::path` migration and Unicode path fixes via PR #9.
+
+---
+
 ## [1.4.0] - 2026-03-20
 
 ### Fixed
