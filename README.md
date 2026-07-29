@@ -237,7 +237,7 @@ Build the DLL once with C++17. Consumers link against the compiled binary — no
 
 ```cpp
 struct Config {
-    std::string dumpFolder        = "./crash_dumps/"; // output directory
+    std::filesystem::path dumpFolder = "./crash_dumps/"; // output directory
     std::string dumpFileName      = "crash";          // base filename
     bool enableTextLog            = true;             // write .txt report
     bool autoTimestamp            = true;             // append timestamp to filename

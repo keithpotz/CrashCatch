@@ -3,7 +3,7 @@
 #include <fstream>
 
 // Simulated upload function
-void simulateUpload(const std::string& path) {
+void simulateUpload(const std::filesystem::path& path) {
     std::cout << "[Uploader] Simulating upload of file: " << path << std::endl;
     std::ifstream file(path);
     if (file.is_open()) {
