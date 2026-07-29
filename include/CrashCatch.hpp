@@ -162,13 +162,21 @@ namespace CrashCatch {
 
         int status = 0;
         size_t size = 0;
-        char* demangled = abi::__cxa_demangle( symbolStr.c_str(), nullptr, &size, &status );
+        char* demangled = abi::__cxa_demangle(symbolStr.c_str(), nullptr, &size, &status);
 
-        if( status != 0 )
-         return symbolStr;
+        if(status != 0)
+        {
+            if(demangled)
+                free(demangled);
+
+            return symbolStr;
+        }
 
         std::ostringstream out;
         out << demangled << offset;
+
+		if(demangled)
+			free(demangled);
 
         return out.str();
     }
@@ -366,7 +374,7 @@ namespace CrashCatch {
     // Solution: fork() a child process to do all the heavy work (logging, callbacks).
     // The child inherits the parent's memory image but runs in a clean execution context
     // where malloc locks are not held. The parent simply _exit()s immediately.
-    inline void linuxSignalHandler(int signum) {
+    inline void posixSignalHandler(int signum) {
         // Build paths before fork using only already-constructed std::strings.
         // These copies are safe because we're single-threaded at the point of the crash
         // signal delivery (the faulting thread is the only one executing here).
@@ -409,11 +417,11 @@ namespace CrashCatch {
         SymInitialize(GetCurrentProcess(), nullptr, TRUE);
         SetUnhandledExceptionFilter(UnhandledExceptionHandler);
 #elif defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
-        signal(SIGSEGV, linuxSignalHandler);
-        signal(SIGABRT, linuxSignalHandler);
-        signal(SIGFPE, linuxSignalHandler);
-        signal(SIGILL, linuxSignalHandler);
-        signal(SIGBUS, linuxSignalHandler);
+        signal(SIGSEGV, posixSignalHandler);
+        signal(SIGABRT, posixSignalHandler);
+        signal(SIGFPE,  posixSignalHandler);
+        signal(SIGILL,  posixSignalHandler);
+        signal(SIGBUS,  posixSignalHandler);
 #endif
         return true;
     }
