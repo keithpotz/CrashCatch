@@ -28,6 +28,7 @@ CrashCatch is a lightweight, single-header C++ crash-reporting library that gene
 - Thread-safe timestamp generation
 - `SymInitialize` called at startup for faster, more reliable symbol resolution
 - Fully configurable output path, filename, and format
+- Unicode-safe paths via `std::filesystem::path` — non-ASCII crash file paths work correctly on Windows (C++ API and C API alike)
 - DLL / shared library support via `CrashCatchDLL.hpp` for C++11/C++98/C consumers
 - CMake install + `find_package` support
 - Zero external dependencies
@@ -198,14 +199,16 @@ Both `onCrash` and `onCrashUpload` receive a `CrashContext` populated after file
 
 ```cpp
 struct CrashContext {
-    std::string dumpFilePath;  // path to .dmp (Windows) or empty (Linux)
-    std::string logFilePath;   // path to .txt crash report
-    std::string timestamp;     // YYYY-MM-DD_HH-MM-SS
-    int signalOrCode;          // POSIX signal number or Windows exception code
+    std::filesystem::path dumpFilePath;  // path to .dmp (Windows) or empty (Linux)
+    std::filesystem::path logFilePath;   // path to .txt crash report
+    std::string timestamp;               // YYYY-MM-DD_HH-MM-SS
+    int signalOrCode;                    // POSIX signal number or Windows exception code
 };
 ```
 
 > Both callbacks fire **after** crash files are on disk. It is safe to open, read, or upload them from within either callback.
+>
+> **Breaking change (v1.5.0):** `dumpFilePath` and `logFilePath` were previously `std::string` and are now `std::filesystem::path`, which also fixes `dumpFolder` requiring a trailing path separator. Code that consumed these fields as strings (e.g. passing them to a function expecting `const std::string&`) will need to call `.string()` or update the signature to accept `const std::filesystem::path&`.
 
 ---
 
@@ -230,6 +233,8 @@ int main() {
 ```
 
 Build the DLL once with C++17. Consumers link against the compiled binary — no C++17 required on their end.
+
+`dump_path` and `log_path` passed to `on_crash`/`on_crash_upload` are UTF-8 encoded, so crash file paths containing non-ASCII characters round-trip correctly on Windows even though the callback signature stays `const char*`.
 
 ---
 

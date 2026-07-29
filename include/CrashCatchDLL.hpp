@@ -66,7 +66,7 @@ extern "C" {
 // ── Plain-C configuration struct ─────────────────────────────────────────
 // Mirrors CrashCatch::Config but uses only C-compatible types.
 typedef struct {
-    const char* dump_folder;        // Directory to write crash files (default: "./crash_dumps/")
+    const char* dump_folder;        // Directory to write crash files, UTF-8 encoded (default: "./crash_dumps/")
     const char* dump_file_name;     // Base filename (default: "crash")
     int         enable_text_log;    // Write .txt crash report (1 = yes, 0 = no)
     int         auto_timestamp;     // Append timestamp to filename (1 = yes)
@@ -77,7 +77,8 @@ typedef struct {
     const char* additional_notes;   // Optional notes included in crash log
 
     // Optional callbacks — set to NULL if not needed.
-    // context_json: a JSON-formatted string of crash context fields.
+    // dump_path / log_path are UTF-8 encoded (not the local codepage), so
+    // paths with non-ASCII characters round-trip correctly on Windows.
     void (*on_crash)(const char* dump_path, const char* log_path,
                      const char* timestamp, int signal_or_code);
     void (*on_crash_upload)(const char* dump_path, const char* log_path,
@@ -160,7 +161,9 @@ CRASHCATCH_API int crashcatch_init(const CrashCatch_Config* cfg) {
 
     CrashCatch::Config cppConfig;
 
-    if (cfg->dump_folder)       cppConfig.dumpFolder        = cfg->dump_folder;
+    // u8path interprets the input as UTF-8 (matching the callbacks below) instead of
+    // the local codepage, which is what the plain const char* -> path conversion would use.
+    if (cfg->dump_folder)       cppConfig.dumpFolder        = std::filesystem::u8path(cfg->dump_folder);
     if (cfg->dump_file_name)    cppConfig.dumpFileName      = cfg->dump_file_name;
     if (cfg->app_version)       cppConfig.appVersion        = cfg->app_version;
     if (cfg->build_config)      cppConfig.buildConfig       = cfg->build_config;
@@ -175,8 +178,13 @@ CRASHCATCH_API int crashcatch_init(const CrashCatch_Config* cfg) {
     if (cfg->on_crash) {
         auto cb = cfg->on_crash; // capture raw pointer — safe, DLL lifetime
         cppConfig.onCrash = [cb](const CrashCatch::CrashContext& ctx) {
-            cb(ctx.dumpFilePath.c_str(),
-               ctx.logFilePath.c_str(),
+            // u8string() gives a UTF-8 std::string regardless of platform, so this
+            // stays a const char* callback while still round-tripping Unicode paths
+            // (path::c_str() would return wchar_t* on Windows and not compile here).
+            const std::string dumpPathUtf8 = ctx.dumpFilePath.u8string();
+            const std::string logPathUtf8  = ctx.logFilePath.u8string();
+            cb(dumpPathUtf8.c_str(),
+               logPathUtf8.c_str(),
                ctx.timestamp.c_str(),
                ctx.signalOrCode);
         };
@@ -185,8 +193,10 @@ CRASHCATCH_API int crashcatch_init(const CrashCatch_Config* cfg) {
     if (cfg->on_crash_upload) {
         auto cb = cfg->on_crash_upload;
         cppConfig.onCrashUpload = [cb](const CrashCatch::CrashContext& ctx) {
-            cb(ctx.dumpFilePath.c_str(),
-               ctx.logFilePath.c_str(),
+            const std::string dumpPathUtf8 = ctx.dumpFilePath.u8string();
+            const std::string logPathUtf8  = ctx.logFilePath.u8string();
+            cb(dumpPathUtf8.c_str(),
+               logPathUtf8.c_str(),
                ctx.timestamp.c_str(),
                ctx.signalOrCode);
         };
