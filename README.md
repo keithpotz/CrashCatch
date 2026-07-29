@@ -10,8 +10,8 @@
 ![Single Header](https://img.shields.io/badge/Single--header-✔️-green)
 ![CI](https://github.com/keithpotz/CrashCatch/actions/workflows/build.yml/badge.svg)
 
-> **CrashCatch Analyzer is now in Beta!** A standalone desktop tool for analyzing and understanding your crash reports  symbolicated stack traces, plain-English explanations, and more.
-> **[Download / View the Beta on GitHub](https://github.com/keithpotz/Crash-Catch-Analyzer-Release)**
+> **CrashCatch Analyzer is now fully released!** A standalone desktop tool for analyzing and understanding your crash reports  symbolicated stack traces, plain-English explanations, and more.
+> **[Download / View on GitHub](https://github.com/keithpotz/Crash-Catch-Analyzer-Release)**
 
 CrashCatch is a lightweight, single-header C++ crash-reporting library that generates `.dmp` and `.txt` crash logs with accurate stack traces, diagnostics, optional cleanup hooks, and user dialogs all with no external dependencies.
 
