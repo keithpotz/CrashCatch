@@ -194,8 +194,8 @@ namespace CrashCatch {
         std::ostringstream out;
         out << module << " " << demangled << offset;
 
-		if(demangled)
-			free(demangled);
+        if(demangled)
+            free(demangled);
 
         return out.str();
     }
