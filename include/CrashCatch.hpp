@@ -144,6 +144,18 @@ namespace CrashCatch {
         return sym; // return original if no mangled segment found or demangle failed
     }
 #elif defined(CRASHCATCH_PLATFORM_MACOS)
+    // On macOS symbol names from backtrace() are very long.
+    // For example look at this:
+    // symbol = 3   dyld                                0x0000000196776b98 start + 6076
+    //
+    // the code below parses that into it's components, 
+    // that being the index, module name, address, mangled function name
+    // and finally the offset.
+    // 
+    // We are only really intrested in the address, the mangled function name and the offset
+    // so thats what the return value will be.
+    //
+    //
     inline std::string demangle(const char* symbol) {
         std::istringstream iss(symbol);
 
@@ -151,12 +163,14 @@ namespace CrashCatch {
         std::string module;
         std::string address;
 
+        // Spilt into components.
         if (!(iss >> frame >> module >> address))
             return std::string(symbol);
 
         std::string symbolStr;
         iss >> symbolStr;
 
+        // Returns " + {offset} in denary".
         std::string offset;
         std::getline(iss, offset);
 
@@ -169,11 +183,16 @@ namespace CrashCatch {
             if(demangled)
                 free(demangled);
 
-            return symbolStr;
+            // If we cannot demangle the symbol we can just output the module and the raw symbol
+            // plus the offset.
+            std::ostringstream ss;
+            ss << module << " " << symbolStr << offset;
+
+            return ss.str(); 
         }
 
         std::ostringstream out;
-        out << demangled << offset;
+        out << module << " " << demangled << offset;
 
 		if(demangled)
 			free(demangled);
@@ -212,8 +231,14 @@ namespace CrashCatch {
 
         log << "Crash Report\n============\n";
 
-#if defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
+#ifdef CRASHCATCH_PLATFORM_LINUX
         log << "Signal: " << strsignal(signal) << " (" << signal << ")\n";
+#elif defined(CRASHCATCH_PLATFORM_MACOS)
+        // On macOS strsignal() can produde an output like:
+        // Segmentation fault: 11
+        // So on macOS it doesn't make sense to include the signal code when it's
+        // already present.
+        log << "Signal: " << strsignal(signal) << "\n";
 #endif
         log << "Timestamp: " << (timestamp.empty() ? "N/A" : timestamp) << "\n\n";
         log << "Environment Info:\n" << getDiagnosticsInfo() << "\n";
@@ -321,8 +346,8 @@ namespace CrashCatch {
         const std::string timestamp = globalConfig.autoTimestamp ? getTimestamp() : "";
         const std::string base = globalConfig.dumpFileName + (timestamp.empty() ? "" : ("_" + timestamp));
      
-		const std::filesystem::path dumpPath = globalConfig.dumpFolder / ( base + ".dmp" );
-		const std::filesystem::path logPath = globalConfig.dumpFolder / ( base + ".txt" );
+        const std::filesystem::path dumpPath = globalConfig.dumpFolder / ( base + ".dmp" );
+        const std::filesystem::path logPath = globalConfig.dumpFolder / ( base + ".txt" );
 
         const std::wstring dumpFilepathStr = dumpPath.wstring();
 
