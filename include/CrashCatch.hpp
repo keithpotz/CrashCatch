@@ -16,6 +16,8 @@ License: MIT
 #include <chrono>
 #include <filesystem>
 #include <functional>
+#include <vector>
+#include <cstdio>
 
 #if defined(_WIN32)
 #define CRASHCATCH_PLATFORM_WINDOWS
@@ -109,11 +111,14 @@ namespace CrashCatch {
         return "(unknown)";
 
 #elif defined(CRASHCATCH_PLATFORM_MACOS)
-        char buffer[PATH_MAX];
-        uint32_t maxPath = PATH_MAX;
-        _NSGetExecutablePath(buffer, &maxPath);
+        uint32_t size = 0;
+        _NSGetExecutablePath(nullptr, &size); // first call: returns -1, but writes the required buffer size into 'size'
 
-        return std::string(buffer);
+        std::vector<char> buffer(size);
+        if (_NSGetExecutablePath(buffer.data(), &size) != 0){
+            return "(unknown)"; // still failed even with the correct size - shouldn't normally happen
+        }
+        return std::string(buffer.data());
 #endif
     }
 
@@ -198,6 +203,44 @@ namespace CrashCatch {
             free(demangled);
 
         return out.str();
+    }
+    // Uses 'atos' (Xcode Command Line Tools) to resolve file:line for a batch
+    // of return addresses in the current process. Called rorm the forked child,
+    // where heap allocation and process spawning are safe.
+    // Requires debug info to be present in the binar stripped/Release builds
+    // without symbols will just get empty results, which callers should handl
+    // gracefully (fall back to module+symbol+offset only). 
+    inline std::vector<std::string> resolveFileLines(const std::vector<void*>& addresses){
+        std::vector<std::string> results(addresses.size());
+        if (addresses.empty()) return results;
+
+        std::ostringstream cmd;
+        cmd << "atos -p" << getpid();
+        for (auto addr: addresses){
+            cmd << " " << addr;
+        }
+
+        FILE* pipe = popen(cmd.str().c_str(), "r");
+        if (!pipe) return results;
+
+        char lineBuf[1024];
+        size_t idx = 0;
+        while (idx < results.size() && fgets(lineBuf, sizeof(lineBuf), pipe)){
+            std::string line(lineBuf);
+            auto lastOpen = line.rfind('(');
+            auto lastClose = line.rfind(')');
+            if (lastOpen != std::string::npos && lastClose != std::string::npos && lastClose > lastOpen){
+                std::string inner = line.substr(lastOpen +1, lastClose - lastOpen -1);
+                // atos gives "(file.cpp:42)" when debug info is present,
+                // or "(in ModuleName)" when it isn't only keep the former.
+                if (inner.find(':') != std::string::npos && inner.rfind("in ", 0) != 0){
+                    results[idx] = inner;
+                }
+            }
+            ++idx;
+        }
+        pclose(pipe);
+        return results;
     }
 #endif
 
@@ -325,8 +368,21 @@ namespace CrashCatch {
             int frames = backtrace(callstack, 128);
             char** symbols = backtrace_symbols(callstack, frames);
             log << "\nStack Trace:\n";
+#ifdef CRASHCATCH_PLATFORM_MACOS
+            //Batch-resolve file:line for every frame in one atos call, rather 
+            // than shelling out once per fram.
+            std::vector<void*> addrVec(callstack, callstack + frames);
+            std::vector<std::string> fileLines = resolveFileLines(addrVec);
+#endif
+
             for (int i = 0; i < frames; ++i) {
-                log << "  [" << i << "]: " << demangle(symbols[i]) << "\n";
+                log << "  [" << i << "]: " << demangle(symbols[i]);
+#ifdef CRASHCATCH_PLATFORM_MACOS
+                if (!fileLines[i].empty()){
+                    log << " (" << fileLines[i] << " )";
+                }
+#endif        
+                log << "\n";
             }
             free(symbols);
         }
