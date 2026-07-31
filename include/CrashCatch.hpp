@@ -204,6 +204,7 @@ namespace CrashCatch {
 
         return out.str();
     }
+    
     // Uses 'atos' (Xcode Command Line Tools) to resolve file:line for a batch
     // of return addresses in the current process. Called rorm the forked child,
     // where heap allocation and process spawning are safe.
@@ -277,7 +278,7 @@ namespace CrashCatch {
 #ifdef CRASHCATCH_PLATFORM_LINUX
         log << "Signal: " << strsignal(signal) << " (" << signal << ")\n";
 #elif defined(CRASHCATCH_PLATFORM_MACOS)
-        // On macOS strsignal() can produde an output like:
+        // On macOS strsignal() can produce an output like:
         // Segmentation fault: 11
         // So on macOS it doesn't make sense to include the signal code when it's
         // already present.
