@@ -240,10 +240,10 @@ namespace CrashCatch {
     }
     
     // Uses 'atos' (Xcode Command Line Tools) to resolve file:line for a batch
-    // of return addresses in the current process. Called rorm the forked child,
+    // of return addresses in the current process. Called from the forked child,
     // where heap allocation and process spawning are safe.
-    // Requires debug info to be present in the binar stripped/Release builds
-    // without symbols will just get empty results, which callers should handl
+    // Requires debug info to be present in the binary stripped/Release builds
+    // without symbols will just get empty results, which callers should handle
     // gracefully (fall back to module+symbol+offset only). 
     inline std::vector<std::string> resolveFileLines(const std::vector<void*>& addresses){
         std::vector<std::string> results(addresses.size());
@@ -265,7 +265,7 @@ namespace CrashCatch {
             auto lastOpen = line.rfind('(');
             auto lastClose = line.rfind(')');
             if (lastOpen != std::string::npos && lastClose != std::string::npos && lastClose > lastOpen){
-                std::string inner = line.substr(lastOpen +1, lastClose - lastOpen -1);
+                std::string inner = line.substr(lastOpen + 1, lastClose - lastOpen - 1);
                 // atos gives "(file.cpp:42)" when debug info is present,
                 // or "(in ModuleName)" when it isn't only keep the former.
                 if (inner.find(':') != std::string::npos && inner.rfind("in ", 0) != 0){
