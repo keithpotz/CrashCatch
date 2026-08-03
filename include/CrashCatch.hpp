@@ -163,37 +163,46 @@ namespace CrashCatch {
         std::string workingSymbol(symbol);
 
         std::string module;
-        std::string address;
         std::string offset;
 
         // Helper function to trim the right-hand side of the symbol.
-        const auto trimRight = [ & ]( std::string& sv )
+        const auto trimRight = [&](std::string& s)
         {
-            while( !sv.empty() && std::isspace( ( unsigned char ) sv.back() ) )
-                sv.pop_back();
-	    };
+            while(!s.empty() && std::isspace((unsigned char) s.back()))
+                s.pop_back();
+        };
 
-        trimRight( workingSymbol );
+        const auto trimLeft = [&](std::string& s)
+        {
+            const auto pos = s.find_first_not_of(" \t");
+            if (pos == std::string::npos)
+                s.clear();
+            else
+                s.erase(0, pos);
+        };
+
+        trimRight(workingSymbol);
 
         // Parse offset, the offset is next to the '+' character.
-        const auto plus = workingSymbol.rfind( '+' );
-        if( plus == std::string::npos )
+        const auto plus = workingSymbol.rfind('+');
+        if(plus == std::string::npos)
             return workingSymbol;
 
-        offset = workingSymbol.substr( plus + 1 );
+        offset = workingSymbol.substr(plus + 1);
 
         // Now, we'll remove the entire offset from the string...
-        workingSymbol = workingSymbol.substr( 0, plus );
+        workingSymbol = workingSymbol.substr(0, plus);
         // including the space...
-	    trimRight( workingSymbol );
+        trimRight(workingSymbol);
 
         // Parse function name.
         std::string symbolStr;
-	    auto lastSpace = workingSymbol.find_last_of( " \t" );
-	    if( lastSpace == std::string::npos )
-		    return "todo-nospace";
+        auto lastSpace = workingSymbol.find_last_of(" \t");
+        // If we cannot find the space, then we'll just return the original symbol.
+        if(lastSpace == std::string::npos)
+            return std::string(symbol);
 
-        symbolStr = std::string( workingSymbol.substr( lastSpace + 1 ) );
+        symbolStr = std::string(workingSymbol.substr(lastSpace + 1));
 
         // Now, demangle:
         int status = 0;
@@ -202,33 +211,27 @@ namespace CrashCatch {
 
         // Demangling was successful...
         if(status == 0)
-        {
             symbolStr = std::string(demangled);
-        }
 
         if(demangled)
             free(demangled);
 
+        // Remove from working symbol.
+        workingSymbol = workingSymbol.substr(0, lastSpace);
         // Remove trailing space on the right.
-        workingSymbol = workingSymbol.substr( 0, lastSpace );
-	    trimRight( workingSymbol );
+        trimRight(workingSymbol);
         
-        // Parse address
-        lastSpace = workingSymbol.find_last_of( " \t" );
-        if( lastSpace != std::string::npos )
-        {
-            address = std::string( workingSymbol.substr( lastSpace + 1 ) );
-        }
-
-        workingSymbol = workingSymbol.substr( 0, lastSpace );
-	    trimRight( workingSymbol );
+        // Parse address, we don't care about it but we still need to remove it.
+        lastSpace = workingSymbol.find_last_of(" \t");
+        workingSymbol = workingSymbol.substr(0, lastSpace);
+        trimRight(workingSymbol);
 
         // Frame number position, we don't care about that.
-        const auto frameNumberPosition = workingSymbol.find_first_of( " \t" );
+        const auto frameNumberPosition = workingSymbol.find_first_of(" \t");
 
-        module = workingSymbol.substr( frameNumberPosition );
-	    while( !module.empty() && std::isspace( ( unsigned char ) module.front() ) )
-		    module.erase( 0, 1 );
+        module = workingSymbol.substr(frameNumberPosition);
+        while(!module.empty() && std::isspace((unsigned char) module.front()))
+            trimLeft(module);
 
         std::ostringstream oss;
         oss << module << " " << symbolStr << " +" << offset;
