@@ -157,7 +157,12 @@ namespace CrashCatch {
     //          Frame  Module                                Address            Name    Offset
     // In this case the function name is coming from C so it's not managled.
     //
-    // the code below parses that into it's components.
+    // The code below parses that into it's components, and unfortunately it's not so easy as it
+    // is on Linux, macOS doesn't really give us a nice structured symbol to parse as on Linux
+    // they can look like "./app(_Z3foov+0x10) [0x7f...]" and we and find the module name by loo-
+    // king what comes after the "/" until the "(". 
+    // But on macOS we parse the symbol backwards and work our way towards the module name, 
+    // which is needed because the module name may contain spaces.
     //
     inline std::string demangle(const char* symbol) {
         std::string workingSymbol(symbol);
@@ -188,7 +193,7 @@ namespace CrashCatch {
         if(plus == std::string::npos)
             return workingSymbol;
 
-        offset = workingSymbol.substr(plus + 1);
+        offset = workingSymbol.substr(plus);
 
         // Now, we'll remove the entire offset from the string...
         workingSymbol = workingSymbol.substr(0, plus);
@@ -234,7 +239,7 @@ namespace CrashCatch {
             trimLeft(module);
 
         std::ostringstream oss;
-        oss << module << " " << symbolStr << " +" << offset;
+        oss << module << " " << symbolStr << " " << offset;
 
         return oss.str();
     }
