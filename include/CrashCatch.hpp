@@ -149,60 +149,91 @@ namespace CrashCatch {
         return sym; // return original if no mangled segment found or demangle failed
     }
 #elif defined(CRASHCATCH_PLATFORM_MACOS)
-    // On macOS symbol names from backtrace() are very long.
+    //
+    // macOS symbol names from backtrace() are very long.
     // For example look at this:
-    // symbol = 3   dyld                                0x0000000196776b98 start + 6076
+    // symbol = 3   My Module                                0x0000000196776b98 start + 6076
+    // If we break it down we get:
+    //          Frame  Module                                Address            Name    Offset
+    // In this case the function name is coming from C so it's not managled.
     //
-    // the code below parses that into it's components, 
-    // that being the index, module name, address, mangled function name
-    // and finally the offset.
-    // 
-    // We are only really intrested in the address, the mangled function name and the offset
-    // so thats what the return value will be.
-    //
+    // the code below parses that into it's components.
     //
     inline std::string demangle(const char* symbol) {
-        std::istringstream iss(symbol);
+        std::string workingSymbol(symbol);
 
-        int frame;
         std::string module;
         std::string address;
-
-        // Spilt into components.
-        if (!(iss >> frame >> module >> address))
-            return std::string(symbol);
-
-        std::string symbolStr;
-        iss >> symbolStr;
-
-        // Returns " + {offset} in denary".
         std::string offset;
-        std::getline(iss, offset);
 
+        // Helper function to trim the right-hand side of the symbol.
+        const auto trimRight = [ & ]( std::string& sv )
+        {
+            while( !sv.empty() && std::isspace( ( unsigned char ) sv.back() ) )
+                sv.pop_back();
+	    };
+
+        trimRight( workingSymbol );
+
+        // Parse offset, the offset is next to the '+' character.
+        const auto plus = workingSymbol.rfind( '+' );
+        if( plus == std::string::npos )
+            return workingSymbol;
+
+        offset = workingSymbol.substr( plus + 1 );
+
+        // Now, we'll remove the entire offset from the string...
+        workingSymbol = workingSymbol.substr( 0, plus );
+        // including the space...
+	    trimRight( workingSymbol );
+
+        // Parse function name.
+        std::string symbolStr;
+	    auto lastSpace = workingSymbol.find_last_of( " \t" );
+	    if( lastSpace == std::string::npos )
+		    return "todo-nospace";
+
+        symbolStr = std::string( workingSymbol.substr( lastSpace + 1 ) );
+
+        // Now, demangle:
         int status = 0;
         size_t size = 0;
         char* demangled = abi::__cxa_demangle(symbolStr.c_str(), nullptr, &size, &status);
 
-        if(status != 0)
+        // Demangling was successful...
+        if(status == 0)
         {
-            if(demangled)
-                free(demangled);
-
-            // If we cannot demangle the symbol we can just output the module and the raw symbol
-            // plus the offset.
-            std::ostringstream ss;
-            ss << module << " " << symbolStr << offset;
-
-            return ss.str(); 
+            symbolStr = std::string(demangled);
         }
-
-        std::ostringstream out;
-        out << module << " " << demangled << offset;
 
         if(demangled)
             free(demangled);
 
-        return out.str();
+        // Remove trailing space on the right.
+        workingSymbol = workingSymbol.substr( 0, lastSpace );
+	    trimRight( workingSymbol );
+        
+        // Parse address
+        lastSpace = workingSymbol.find_last_of( " \t" );
+        if( lastSpace != std::string::npos )
+        {
+            address = std::string( workingSymbol.substr( lastSpace + 1 ) );
+        }
+
+        workingSymbol = workingSymbol.substr( 0, lastSpace );
+	    trimRight( workingSymbol );
+
+        // Frame number position, we don't care about that.
+        const auto frameNumberPosition = workingSymbol.find_first_of( " \t" );
+
+        module = workingSymbol.substr( frameNumberPosition );
+	    while( !module.empty() && std::isspace( ( unsigned char ) module.front() ) )
+		    module.erase( 0, 1 );
+
+        std::ostringstream oss;
+        oss << module << " " << symbolStr << " +" << offset;
+
+        return oss.str();
     }
     
     // Uses 'atos' (Xcode Command Line Tools) to resolve file:line for a batch
