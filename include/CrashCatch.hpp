@@ -48,7 +48,7 @@ namespace CrashCatch {
     struct CrashContext {
         std::filesystem::path dumpFilePath;  // .dmp (Windows) or blank (Linux)
         std::filesystem::path logFilePath;   // .txt summary log
-        std::string timestamp;     // Crash timestamp
+        std::string timestamp;          // Crash timestamp
         int signalOrCode = 0;           // Signal or exception code
     };
 
@@ -63,16 +63,16 @@ namespace CrashCatch {
         std::function<void(const CrashContext&)> onCrashUpload = nullptr;  // Optional hook to upload crash report
         std::string appVersion = "unknown";          // Application version string
         std::string buildConfig =
-        //NDEBUG is the way to go due to portability, its part of the 
-        //C/C++ standard (controls assert()) and CMake defines/undefines it ionsistently
-        //across MSVC, Clang, and GCC based on the CMAKE_BUILD_TYPE. _DEBUG by contrast is 
-        // MSVC/CRT specific and won't reflect the real build typ eon other compilers.
+        // NDEBUG is the way to go due to portability, its part of the 
+        // C/C++ standard (controls assert()) and CMake defines/undefines it consistently
+        // across MSVC, Clang, and GCC based on the CMAKE_BUILD_TYPE. _DEBUG by contrast is 
+        // MSVC/CRT specific and won't reflect the real build type on other compilers.
 #if !defined(NDEBUG) 
             "Debug";
 #else
             "Release";
 #endif
-        std::string additionalNotes = "";            // Optional notes in crash log
+        std::string additionalNotes;                 // Optional notes in crash log
         bool includeStackTrace = true;               // Output stack trace in .txt log (Windows + Linux)
     };
 
