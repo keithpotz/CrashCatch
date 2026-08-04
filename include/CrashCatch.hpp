@@ -63,7 +63,11 @@ namespace CrashCatch {
         std::function<void(const CrashContext&)> onCrashUpload = nullptr;  // Optional hook to upload crash report
         std::string appVersion = "unknown";          // Application version string
         std::string buildConfig =
-#ifdef _DEBUG
+        //NDEBUG is the way to go due to portability, its part of the 
+        //C/C++ standard (controls assert()) and CMake defines/undefines it ionsistently
+        //across MSVC, Clang, and GCC based on the CMAKE_BUILD_TYPE. _DEBUG by contrast is 
+        // MSVC/CRT specific and won't reflect the real build typ eon other compilers.
+#if !defined(NDEBUG) 
             "Debug";
 #else
             "Release";
@@ -116,7 +120,7 @@ namespace CrashCatch {
 
         std::vector<char> buffer(size);
         if (_NSGetExecutablePath(buffer.data(), &size) != 0){
-            return "(unknown)"; // still failed even with the correct size - shouldn't normally happen
+            return "(unknown)"; // still failed even with the correct size
         }
         return std::string(buffer.data());
 #endif
@@ -419,7 +423,7 @@ namespace CrashCatch {
                 log << "  [" << i << "]: " << demangle(symbols[i]);
 #ifdef CRASHCATCH_PLATFORM_MACOS
                 if (!fileLines[i].empty()){
-                    log << " (" << fileLines[i] << " )";
+                    log << " (" << fileLines[i] << ")";
                 }
 #endif        
                 log << "\n";
