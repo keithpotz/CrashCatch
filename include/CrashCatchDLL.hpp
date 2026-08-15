@@ -2,7 +2,7 @@
 
 /*
 CrashCatchDLL - C interface wrapper for CrashCatch
-Version 1.5.0
+Version 1.6.0
 Created by Keith Pottratz
 License: MIT
 

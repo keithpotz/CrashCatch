@@ -2,7 +2,7 @@
 
 /*
 CrashCatch - A simple cross-platform crash handler
-Version 1.5.0
+Version 1.6.0
 Created by Keith Pottratz
 Email: keithpotz@gmail.com
 License: MIT

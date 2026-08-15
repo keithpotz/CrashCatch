@@ -5,7 +5,7 @@ import os
 
 class CrashCatchConan(ConanFile):
     name = "crashcatch"
-    version = "1.5.0"
+    version = "1.6.0"
     description = "A cross-platform, single-header C++ crash-reporting library for modern C++ applications."
     license = "MIT"
     url = "https://github.com/keithpotz/CrashCatch"
