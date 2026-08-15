@@ -1,5 +1,6 @@
 from conan import ConanFile
 from conan.tools.files import copy
+from conan.tools.files import get
 import os
 
 
@@ -14,10 +15,11 @@ class CrashCatchConan(ConanFile):
     package_type = "header-library"
     no_copy_source = True
 
-    # Bundles headers and license into the Conan cache for local builds.
-    # For ConanCenter submission: remove exports_sources and replace with a
-    # source() method that calls get() to fetch the release tarball from GitHub.
-    exports_sources = "include/*.hpp", "LICENSE"
+
+    def source(self):
+        get(self, 
+            f"https://github.com/keithpotz/CrashCatch/archive/refs/tags/v{self.version}.tar.gz",
+            strip_root=True)
 
     def package_id(self):
         # Header-only: binary is the same regardless of compiler/settings
