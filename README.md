@@ -4,7 +4,7 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Header-only](https://img.shields.io/badge/Header--only-yes-green)
-![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightblue)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightblue)
 ![C++](https://img.shields.io/badge/C++-17%2B-blue)
 ![Crash Dumps](https://img.shields.io/badge/Dump-.dmp%2C%20.txt-orange)
 ![Single Header](https://img.shields.io/badge/Single--header-✔️-green)
@@ -19,14 +19,16 @@ CrashCatch is a lightweight, single-header C++ crash-reporting library that gene
 
 ## Key Features
 
-- Cross-platform: Windows & Linux (macOS planned)
+- Cross-platform: Windows, Linux & macOS
 - Single-header integration just `#include "CrashCatch.hpp"`
 - Accurate crash-site stack traces Windows stack walk uses the actual crash context, not the handler frame
-- `.dmp` MiniDump (Windows) and `.txt` human-readable report (Windows & Linux)
+- `.dmp` MiniDump (Windows) and `.txt` human-readable report (Windows, Linux & macOS)
 - `onCrash()` and `onCrashUpload()` callbacks fire **after** crash files are written to disk
-- Demangled symbols on Linux, `SymFromAddr` with file/line info on Windows
+- Demangled symbols on Linux and macOS, `SymFromAddr` with file/line info on Windows
+- File/line numbers in macOS stack traces via `atos` (optional, falls back gracefully without debug symbols)
 - Thread-safe timestamp generation
 - `SymInitialize` called at startup for faster, more reliable symbol resolution
+- Portable Debug/Release detection via `NDEBUG`, consistent across MSVC, Clang, and GCC
 - Fully configurable output path, filename, and format
 - Unicode-safe paths via `std::filesystem::path` — non-ASCII crash file paths work correctly on Windows (C++ API and C API alike)
 - DLL / shared library support via `CrashCatchDLL.hpp` for C++11/C++98/C consumers
@@ -44,7 +46,7 @@ Most crash reporting solutions require heavyweight SDKs, mandatory cloud uploads
 | Single header | ✅ | ❌ | ❌ | ❌ |
 | No external dependencies | ✅ | ❌ | ❌ | ❌ |
 | Offline-first | ✅ | ❌ | ❌ | ❌ |
-| Windows + Linux | ✅ | ✅ | ✅ | ✅ |
+| Windows + Linux + macOS | ✅ | ✅ | ✅ | ✅ |
 | onCrash / onUpload hooks | ✅ | ❌ | ✅ | ✅ |
 | Free & open source | ✅ | ✅ | Partial | ❌ |
 
@@ -114,9 +116,11 @@ int main() {
 |---|---|---|
 | Windows 10 / 11 | ✅ Supported | `SetUnhandledExceptionFilter` + MiniDump + StackWalk64 |
 | Linux | ✅ Supported | POSIX signals + `backtrace()` + `fork()` for safe I/O |
-| macOS | Planned | POSIX + Mach exceptions |
+| macOS | ✅ Supported (Intel & Apple Silicon) | POSIX signals + `backtrace()` + `fork()` for safe I/O; file/line via `atos` (optional) |
 
-Both Windows and Linux builds run in CI on every push, including crash-handler tests that trigger a real crash and verify the resulting log/dump.
+> **macOS notes:** Message boxes and Mach exception interception are not yet implemented see [Roadmap](#roadmap). File/line numbers require Xcode Command Line Tools (`atos`) and debug symbols; falls back gracefully to `module+symbol+offset` on stripped/Release builds without it. On Apple Silicon (ARM64), integer divide-by-zero does not raise `SIGFPE` the way it does on x86_64, since ARM64 doesn't trap on this in hardware — this is a platform-level limitation, not a CrashCatch bug.
+
+Windows and Linux builds run in CI on every push, including crash-handler tests that trigger a real crash and verify the resulting log/dump.
 
 ---
 
@@ -191,6 +195,30 @@ Stack Trace:
 
 > Stack frames on Linux show demangled C++ names when compiled with `-rdynamic`.
 
+### Example `.txt` output (macOS)
+
+```text
+Crash Report
+============
+Signal: Segmentation fault: 11
+Timestamp: 2026-03-20_09-15-23
+
+Environment Info:
+App Version: 2.0.0
+Build Config: Release
+Platform: macOS
+Executable: /Users/user/MyApp
+
+Stack Trace:
+  [0]: MyApp CrashCatch::writeCrashLog(...) + 676 (CrashCatch.hpp:408)
+  [1]: MyApp CrashCatch::posixSignalHandler(int) + 304 (CrashCatch.hpp:510)
+  [2]: libsystem_platform.dylib _sigtramp + 29
+  [3]: MyApp main + 52
+  [4]: dyld start + 6076
+```
+
+> File/line numbers require debug symbols and Xcode Command Line Tools; system library frames (e.g. `dyld`, `libsystem_platform.dylib`) won't resolve file/line since Apple doesn't ship debug info for them.
+
 ---
 
 ## Crash Context API
@@ -199,7 +227,7 @@ Both `onCrash` and `onCrashUpload` receive a `CrashContext` populated after file
 
 ```cpp
 struct CrashContext {
-    std::filesystem::path dumpFilePath;  // path to .dmp (Windows) or empty (Linux)
+    std::filesystem::path dumpFilePath;  // path to .dmp (Windows) or empty (Linux/macOS)
     std::filesystem::path logFilePath;   // path to .txt crash report
     std::string timestamp;               // YYYY-MM-DD_HH-MM-SS
     int signalOrCode;                    // POSIX signal number or Windows exception code
@@ -249,7 +277,7 @@ struct Config {
     bool showCrashDialog          = false;            // Windows: show MessageBox
     bool includeStackTrace        = true;             // include stack trace in .txt
     std::string appVersion        = "unknown";
-    std::string buildConfig       = "Release";        // or "Debug"
+    std::string buildConfig       = "Release";        // or "Debug" — auto-detected from NDEBUG
     std::string additionalNotes   = "";               // appended to crash report
     std::function<void(const CrashContext&)> onCrash        = nullptr;
     std::function<void(const CrashContext&)> onCrashUpload  = nullptr;
@@ -268,7 +296,7 @@ Working examples are in the [`/examples`](examples/) folder:
 | `Example_OneLiner` | `CrashCatch::enable()` minimal setup |
 | `Example_FullConfig` | All config options including callbacks |
 | `Example_ThreadCrash` | Crash on a non-main thread |
-| `Example_divideByZero` | Arithmetic exception handling |
+| `Example_divideByZero` | Arithmetic exception handling (note: does not raise `SIGFPE` on Apple Silicon see [Supported Platforms](#supported-platforms)) |
 | `Example_UploadCrash` | `onCrashUpload` reading and uploading files |
 | `StackTraceExample` | `includeStackTrace` flag |
 
@@ -279,6 +307,7 @@ Working examples are in the [`/examples`](examples/) folder:
 - C++17 or later (or C++11/C++98/C via `CrashCatchDLL.hpp`)
 - **Windows:** MSVC (Visual Studio 2019+) or MinGW
 - **Linux:** GCC or Clang, link with `-rdynamic` for symbol resolution
+- **macOS:** Clang (via Xcode Command Line Tools, `xcode-select --install`); file/line resolution additionally requires `atos` (included with Command Line Tools) and debug symbols
 
 ---
 
@@ -295,7 +324,9 @@ Working examples are in the [`/examples`](examples/) folder:
 - [x] Async-signal-safe Linux crash handler via `fork()` (v1.4.0)
 - [x] Thread-safe timestamp generation (v1.4.0)
 - [x] vcpkg and Conan package registry support
-- [ ] macOS support (POSIX + Mach exceptions)
+- [x] macOS support POSIX signals, stack traces, file/line via `atos` (v1.5.0)
+- [ ] macOS Mach exception interception (research in progress)
+- [ ] macOS message box support (blocked on Objective-C dependency for single-header goal)
 
 
 ---
