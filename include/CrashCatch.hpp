@@ -84,6 +84,27 @@ namespace CrashCatch {
     inline CONTEXT* g_crashSiteContext = nullptr;
 #endif
 
+    namespace details {
+
+        template<typename F>
+        class AtScopeExit {
+        public:
+            explicit AtScopeExit(F&& lambda)
+                : m_lambda{std::move(lambda)} {}
+            ~AtScopeExit() { m_lambda(); }
+
+            // Prevent default copy and move ctors and assigment operators.
+            AtScopeExit(const AtScopeExit&) = delete;
+            AtScopeExit& operator=(const AtScopeExit&) = delete;
+            AtScopeExit(AtScopeExit&&) = delete;
+            AtScopeExit& operator=(AtScopeExit&&) = delete;
+
+        private:
+            F m_lambda;
+        };
+
+    }
+
     // Generate timestamp string (YYYY-MM-DD_HH-MM-SS)
     inline std::string getTimestamp() {
         auto now = std::chrono::system_clock::now();
@@ -141,14 +162,14 @@ namespace CrashCatch {
             size_t size = 0;
             int status  = 0;
             char* demangled = abi::__cxa_demangle(mangled.c_str(), nullptr, &size, &status);
+            details::AtScopeExit freeDemangled{[=] { free(demangled); }};
+
             if (status == 0 && demangled) {
                 std::string result = sym.substr(0, parenOpen + 1)
                                    + demangled
                                    + sym.substr(plusSign);
-                free(demangled);
                 return result;
             }
-            if (demangled) free(demangled);
         }
         return sym; // return original if no mangled segment found or demangle failed
     }
@@ -217,13 +238,11 @@ namespace CrashCatch {
         int status = 0;
         size_t size = 0;
         char* demangled = abi::__cxa_demangle(symbolStr.c_str(), nullptr, &size, &status);
+        details::AtScopeExit freeDemangled{ [=] { free(demangled); } };
 
         // Demangling was successful...
         if(status == 0)
             symbolStr = std::string(demangled);
-
-        if(demangled)
-            free(demangled);
 
         // Remove from working symbol.
         workingSymbol = workingSymbol.substr(0, lastSpace);
@@ -267,6 +286,8 @@ namespace CrashCatch {
         FILE* pipe = popen(cmd.str().c_str(), "r");
         if (!pipe) return results;
 
+        details::AtScopeExit closePipe{ [=] { pclose(pipe); } };
+
         char lineBuf[1024];
         size_t idx = 0;
         while (idx < results.size() && fgets(lineBuf, sizeof(lineBuf), pipe)){
@@ -283,7 +304,6 @@ namespace CrashCatch {
             }
             ++idx;
         }
-        pclose(pipe);
         return results;
     }
 #endif
@@ -411,6 +431,7 @@ namespace CrashCatch {
             void* callstack[128];
             int frames = backtrace(callstack, 128);
             char** symbols = backtrace_symbols(callstack, frames);
+            details::AtScopeExit freeSymbols{[=] { free(symbols); }};
             log << "\nStack Trace:\n";
 #ifdef CRASHCATCH_PLATFORM_MACOS
             //Batch-resolve file:line for every frame in one atos call, rather 
@@ -428,7 +449,6 @@ namespace CrashCatch {
 #endif        
                 log << "\n";
             }
-            free(symbols);
         }
 #endif
 
@@ -460,9 +480,10 @@ namespace CrashCatch {
 
         HANDLE hFile = CreateFileW(dumpFilepathStr.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (hFile != INVALID_HANDLE_VALUE) {
+            details::AtScopeExit closeFile{[=]() { CloseHandle(hFile); }};
+
             MINIDUMP_EXCEPTION_INFORMATION dumpInfo = { GetCurrentThreadId(), ep, FALSE };
             MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, MiniDumpWithDataSegs, &dumpInfo, nullptr, nullptr);
-            CloseHandle(hFile);
 
             if (globalConfig.enableTextLog) {
                 writeCrashLog(logPath, timestamp);
