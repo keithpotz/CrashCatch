@@ -6,24 +6,24 @@ Thank you for considering contributing to CrashCatch! We welcome contributions t
 
 We follow a simple process for contributions:
 
-1. **Fork the Repository**:  
+1. **Fork the Repository**:
    Fork the [CrashCatch repository](https://github.com/keithpotz/CrashCatch) to your own GitHub account.
 
-2. **Clone Your Fork**:  
+2. **Clone Your Fork**:
    Clone your fork to your local machine:
    ```bash
    git clone https://github.com/your-username/CrashCatch.git
    ```
 
-3. **Create a New Branch:**
+3. **Create a New Branch**:
     Create a new branch for your changes:
     ```bash
     git checkout -b your-branch-name
     ```
 4. **Make Your Changes**:
- * Write code or modifyy documentation as needed.
+ * Write code or modify documentation as needed.
  * Ensure your changes follow the project's coding standards and guidelines.
- * If you are adding a new feature or fixing a bug, please add unit tests or modify exisitn gone where appropriate.
+ * If you are adding a new feature or fixing a bug, please add unit tests or modify existing ones where appropriate.
 5. **Commit Your Changes**:
     Commit your changes with a clear and concise commit message. Use the following format:
     ```bash
@@ -43,29 +43,29 @@ We follow a simple process for contributions:
 
 ## Coding Style
 We strive for consistency in our codebase. Here are a few key points to keep in mind.
- + Use camelCase for variable and fucntion names
+ + Use camelCase for variable and function names
  + Use 4 spaces for indentation, not tabs.
  + Add comments to explain complex logic or any important assumptions in the code.
 
 ## Documentation
 If you are contributing to the documentation, please ensure that:
  + The text is clear and easy to understand.
- + You follow the format used in other documentation files. 
+ + You follow the format used in other documentation files.
  + You verify that all links and code samples are correct.
 
 ## Testing
-We rely on automated tests to ensure the quality of the coddebase. If you are submitting a bug fix or a new feature:
-  + Please add or update tests to cover your changes.
-  + Ensure that all existing tests pass by running:
-    
-    ```bash
-    #For C++;
-    make test
-    ```
+We rely on automated tests to ensure the quality of the codebase. If you are submitting a bug fix or a new feature:
+ + Please add or update tests to cover your changes.
+ + Ensure that all existing tests pass by running:
+
+   ```bash
+   #For C++
+   make test
+   ```
 ## Issues 
 If you encounter any issues while using CrashCatch, please open an issue on the [GitHub repository](https://github.com/keithpotz/CrashCatch/issues). Provide as much information as possible about the issue, including the steps to reproduce it and any relevant error messages.
 
-## Code of conduct
+## Code of Conduct
 We respect the rights of all contributors and follow the [Contributor Covenant](https://www.contributor-covenant.org/) to ensure a positive and respectful community.
 
 ## License
