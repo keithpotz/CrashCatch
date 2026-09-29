@@ -453,8 +453,6 @@ namespace CrashCatch {
             }
         }
 #endif
-
-        log.close();
     }
 
 #ifdef CRASHCATCH_PLATFORM_WINDOWS
