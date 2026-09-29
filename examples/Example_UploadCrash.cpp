@@ -39,5 +39,6 @@ int main() {
     int* ptr = nullptr;
     *ptr = 42;
 
+    CrashCatch::shutdown();
     return 0;
 }

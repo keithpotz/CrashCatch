@@ -205,6 +205,10 @@ CRASHCATCH_API int crashcatch_init(const CrashCatch_Config* cfg) {
     return CrashCatch::initialize(cppConfig) ? 1 : 0;
 }
 
+CRASHCATCH_API int crashcatch_shutdown() {
+    return CrashCatch::shutdown() ? 1 : 0;   
+}
+
 CRASHCATCH_API int crashcatch_enable(void) {
     return CrashCatch::enable() ? 1 : 0;
 }

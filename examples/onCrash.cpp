@@ -17,4 +17,6 @@ int main() {
     // Simulate crash
     int* ptr = nullptr;
     *ptr = 42; // CRASH!
+
+    CrashCatch::shutdown();
 }

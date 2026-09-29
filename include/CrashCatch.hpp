@@ -82,6 +82,21 @@ namespace CrashCatch {
     // Set by UnhandledExceptionHandler so writeCrashLog can walk the crash-site stack,
     // not the handler's own stack. Only valid during crash handling.
     inline CONTEXT* g_crashSiteContext = nullptr;
+    // Set by initialize to flag SymInitialize succeeded or not. If true, need to cleanup
+    // by SymCleanup.
+    inline bool g_symInitialized = false;
+    // Top level exception filter may already be set. Hold its value to restore back
+    // when shutdown.
+    inline LPTOP_LEVEL_EXCEPTION_FILTER g_previousTopLevelExceptionFilter = nullptr;
+#elif defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
+    // Define a signal handler function pointer.
+    using signalHandler_t = void(*)(int);
+    // Hold previous signal handlers to restore back when shutdown.
+    inline signalHandler_t g_previousSIGSEGVHandler = nullptr;
+    inline signalHandler_t g_previousSIGABRTHandler = nullptr;
+    inline signalHandler_t g_previousSIGFPEHandler = nullptr;
+    inline signalHandler_t g_previousSIGILLHandler = nullptr;
+    inline signalHandler_t g_previousSIGBUSHandler = nullptr;
 #endif
 
     namespace details {
@@ -560,14 +575,47 @@ namespace CrashCatch {
         globalConfig = config;
 #ifdef CRASHCATCH_PLATFORM_WINDOWS
         // Load symbols now so they're ready when a crash occurs
-        SymInitialize(GetCurrentProcess(), nullptr, TRUE);
-        SetUnhandledExceptionFilter(UnhandledExceptionHandler);
+        g_symInitialized = !!SymInitialize(GetCurrentProcess(), nullptr, TRUE);
+        // The exception handler specified by lpTopLevelExceptionFilter is executed
+        // in the context of the thread that caused the fault. It means certain
+        // exceptions like out of memory or invalid stack have no guarantee to be written.
+        g_previousTopLevelExceptionFilter = SetUnhandledExceptionFilter(UnhandledExceptionHandler);
 #elif defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
-        signal(SIGSEGV, posixSignalHandler);
-        signal(SIGABRT, posixSignalHandler);
-        signal(SIGFPE,  posixSignalHandler);
-        signal(SIGILL,  posixSignalHandler);
-        signal(SIGBUS,  posixSignalHandler);
+        g_previousSIGSEGVHandler = signal(SIGSEGV, posixSignalHandler);
+        g_previousSIGABRTHandler = signal(SIGABRT, posixSignalHandler);
+        g_previousSIGFPEHandler = signal(SIGFPE, posixSignalHandler);
+        g_previousSIGILLHandler = signal(SIGILL, posixSignalHandler);
+        g_previousSIGBUSHandler = signal(SIGBUS, posixSignalHandler);
+#endif
+        return true;
+    }
+
+    // Shutdown CrashCatch
+    inline bool shutdown() {
+        // Do in reverse to initialize order as destructors do.
+#ifdef CRASHCATCH_PLATFORM_WINDOWS
+        SetUnhandledExceptionFilter(g_previousTopLevelExceptionFilter);
+        // Cleanup internal structs.
+        if (g_symInitialized) {
+            SymCleanup(GetCurrentProcess());
+        }
+#elif defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
+        // Restore back original signal handlers if they were set.
+        if (g_previousSIGBUSHandler != SIG_ERR) {
+            signal(SIGBUS, g_previousSIGBUSHandler);
+        }
+        if (g_previousSIGILLHandler != SIG_ERR) {
+            signal(SIGILL, g_previousSIGILLHandler);
+        }
+        if (g_previousSIGFPEHandler != SIG_ERR) {
+            signal(SIGFPE, g_previousSIGFPEHandler);
+        }
+        if (g_previousSIGABRTHandler != SIG_ERR) {
+            signal(SIGABRT, g_previousSIGABRTHandler);
+        }
+        if (g_previousSIGSEGVHandler != SIG_ERR) {
+            signal(SIGSEGV, g_previousSIGSEGVHandler);
+        }
 #endif
         return true;
     }
