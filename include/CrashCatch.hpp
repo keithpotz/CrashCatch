@@ -390,7 +390,7 @@ namespace CrashCatch {
 #endif
             // Symbol buffer
             const int MAX_SYM_NAME_LEN = 256;
-            char symBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME_LEN * sizeof(char)];
+            alignas(SYMBOL_INFO) char symBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME_LEN * sizeof(char)];
             SYMBOL_INFO* symbol = reinterpret_cast<SYMBOL_INFO*>(symBuffer);
             symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
             symbol->MaxNameLen   = MAX_SYM_NAME_LEN;
