@@ -124,8 +124,10 @@ namespace CrashCatch {
     inline std::string getExecutablePath() {
 #ifdef CRASHCATCH_PLATFORM_WINDOWS
         char buffer[MAX_PATH];
-        GetModuleFileNameA(nullptr, buffer, MAX_PATH);
-        return std::string(buffer);
+        if (GetModuleFileNameA(nullptr, buffer, MAX_PATH)) {
+            return std::string(buffer);
+        }
+        return "(unknown)";
 #elif defined(CRASHCATCH_PLATFORM_LINUX)
         char path[PATH_MAX];
         ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
