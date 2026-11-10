@@ -108,7 +108,7 @@ int main() {
     // your app code
 
     // Cleanup internal state.
-    CrashCath::shutdown();
+    CrashCatch::shutdown();
 }
 ```
 
@@ -328,7 +328,7 @@ Working examples are in the [`/examples`](examples/) folder:
 - [x] Async-signal-safe Linux crash handler via `fork()` (v1.4.0)
 - [x] Thread-safe timestamp generation (v1.4.0)
 - [x] vcpkg and Conan package registry support
-- [x] macOS support POSIX signals, stack traces, file/line via `atos` (v1.5.0)
+- [x] macOS support POSIX signals, stack traces, file/line via `atos` (v1.6.0)
 - [ ] macOS Mach exception interception (research in progress)
 - [ ] macOS message box support (blocked on Objective-C dependency for single-header goal)
 

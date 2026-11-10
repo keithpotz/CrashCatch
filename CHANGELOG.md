@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.6.0] - Unreleased
+
+### Added
+
+- **macOS support** — POSIX signal handling (`SIGSEGV`, `SIGABRT`, `SIGFPE`, `SIGILL`, `SIGBUS`) with the same `fork()`-based handler as Linux, `backtrace()` stack traces with demangled symbols, and optional file/line resolution via `atos` (Xcode Command Line Tools + debug symbols; falls back to `module symbol + offset` without them). Intel and Apple Silicon.
+- **`CrashCatch::shutdown()`** — restores the unhandled-exception filter (Windows) or signal handlers (Linux/macOS) that were active before `initialize()`, and releases DbgHelp symbol state via `SymCleanup`. Silences leak reports from tools such as Valgrind. Returns `false` and does nothing if CrashCatch is not initialized, so it is safe to call more than once.
+- **`crashcatch_shutdown()`** — C API equivalent in `CrashCatchDLL.hpp`.
+
+### Changed
+
+- **Calling `initialize()` again while already initialized now only updates the configuration** instead of re-installing handlers. Re-installing recorded CrashCatch's own handler as the "previous" one, so `shutdown()` could never restore the application's original handler.
+- Internal cleanup (`free`, `pclose`, `CloseHandle`) now uses a small RAII helper (`details::AtScopeExit`) instead of manual calls on each return path.
+
+### Fixed
+
+- **Windows symbol buffer was misaligned** — the `SYMBOL_INFO` buffer was a plain `char` array cast to `SYMBOL_INFO*`, which is undefined behavior. It is now `alignas(SYMBOL_INFO)`.
+- **`GetModuleFileNameA` failure was ignored** — the executable path is now reported as `(unknown)` instead of reading an uninitialized buffer.
+- **`.dmp` file stayed locked while the crash dialog was open** — the dump handle is now closed immediately after `MiniDumpWriteDump`, so the file can be opened while the `showCrashDialog` message box is displayed.
+- **`MessageBoxW` link error in bare builds** — `user32.lib` is now auto-linked alongside `dbgHelp.lib`.
+- **macOS: `demangle()` could throw or hang inside the crash handler** on backtrace lines without a module column (`substr(npos)` threw `std::out_of_range`) or with unusual leading whitespace (infinite loop).
+- **macOS: `atos` command missing a space** — the command was built as `atos -p<pid>`; it is now `atos -p <pid>`.
+- **`crashcatch_version()` returned `"1.5.0"`** — now `"1.6.0"`.
+
+### Credits
+
+- `shutdown()`, RAII cleanup, symbol-buffer alignment, and `GetModuleFileNameA` fixes via PR #17.
+
+---
+
 ## [1.5.0] - 2026-07-29
 
 ### Changed

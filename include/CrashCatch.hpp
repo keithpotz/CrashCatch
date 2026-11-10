@@ -18,12 +18,14 @@ License: MIT
 #include <functional>
 #include <vector>
 #include <cstdio>
+#include <cctype>
 
 #if defined(_WIN32)
 #define CRASHCATCH_PLATFORM_WINDOWS
 #include <Windows.h>
 #include <DbgHelp.h>
 #pragma comment(lib, "dbgHelp.lib") //Auto-link debugging support library
+#pragma comment(lib, "user32.lib")  //Auto-link MessageBoxW (showCrashDialog)
 #elif defined(__linux__)
 #define CRASHCATCH_PLATFORM_LINUX
 #elif defined(__APPLE__)
@@ -77,6 +79,12 @@ namespace CrashCatch {
     };
 
     inline Config globalConfig; // Global configuration
+
+    // True between a successful initialize() and the matching shutdown(). Guards
+    // against re-hooking on a second initialize() (which would record our own
+    // handler as the "previous" one) and against shutdown() clobbering the app's
+    // handlers when CrashCatch was never installed.
+    inline bool g_initialized = false;
 
 #ifdef CRASHCATCH_PLATFORM_WINDOWS
     // Set by UnhandledExceptionHandler so writeCrashLog can walk the crash-site stack,
@@ -221,7 +229,7 @@ namespace CrashCatch {
 
         const auto trimLeft = [&](std::string& s)
         {
-            const auto pos = s.find_first_not_of(" \t");
+            const auto pos = s.find_first_not_of(" \t\n\r\f\v");
             if (pos == std::string::npos)
                 s.clear();
             else
@@ -274,9 +282,12 @@ namespace CrashCatch {
         // Frame number position, we don't care about that.
         const auto frameNumberPosition = workingSymbol.find_first_of(" \t");
 
-        module = workingSymbol.substr(frameNumberPosition);
-        while(!module.empty() && std::isspace((unsigned char) module.front()))
+        // No separator after the frame number means there is no module column.
+        // substr(npos) would throw std::out_of_range here, inside the crash handler.
+        if (frameNumberPosition != std::string::npos) {
+            module = workingSymbol.substr(frameNumberPosition);
             trimLeft(module);
+        }
 
         std::ostringstream oss;
         oss << module << " " << symbolStr << " " << offset;
@@ -295,7 +306,7 @@ namespace CrashCatch {
         if (addresses.empty()) return results;
 
         std::ostringstream cmd;
-        cmd << "atos -p" << getpid();
+        cmd << "atos -p " << getpid();
         for (auto addr: addresses){
             cmd << " " << addr;
         }
@@ -495,10 +506,14 @@ namespace CrashCatch {
 
         HANDLE hFile = CreateFileW(dumpFilepathStr.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (hFile != INVALID_HANDLE_VALUE) {
-            details::AtScopeExit closeFile{[=]() { CloseHandle(hFile); }};
+            {
+                // Scoped so the dump is closed (and unlocked — share mode is 0)
+                // right after writing, before the log, dialog, and callbacks.
+                details::AtScopeExit closeFile{[=]() { CloseHandle(hFile); }};
 
-            MINIDUMP_EXCEPTION_INFORMATION dumpInfo = { GetCurrentThreadId(), ep, FALSE };
-            MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, MiniDumpWithDataSegs, &dumpInfo, nullptr, nullptr);
+                MINIDUMP_EXCEPTION_INFORMATION dumpInfo = { GetCurrentThreadId(), ep, FALSE };
+                MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, MiniDumpWithDataSegs, &dumpInfo, nullptr, nullptr);
+            }
 
             if (globalConfig.enableTextLog) {
                 writeCrashLog(logPath, timestamp);
@@ -571,8 +586,14 @@ namespace CrashCatch {
 #endif
 
     // Initialize CrashCatch with user configuration
+    // Calling it again while already initialized only updates the configuration;
+    // handlers are not re-installed.
     inline bool initialize(const Config& config = Config()) {
         globalConfig = config;
+        if (g_initialized) {
+            return true;
+        }
+        g_initialized = true;
 #ifdef CRASHCATCH_PLATFORM_WINDOWS
         // Load symbols now so they're ready when a crash occurs
         g_symInitialized = !!SymInitialize(GetCurrentProcess(), nullptr, TRUE);
@@ -590,14 +611,22 @@ namespace CrashCatch {
         return true;
     }
 
-    // Shutdown CrashCatch
+    // Shutdown CrashCatch: restore the previous handlers and release internal state.
+    // Returns false (and does nothing) if CrashCatch is not currently initialized,
+    // so it is safe to call more than once or without a prior initialize().
     inline bool shutdown() {
+        if (!g_initialized) {
+            return false;
+        }
+        g_initialized = false;
         // Do in reverse to initialize order as destructors do.
 #ifdef CRASHCATCH_PLATFORM_WINDOWS
         SetUnhandledExceptionFilter(g_previousTopLevelExceptionFilter);
+        g_previousTopLevelExceptionFilter = nullptr;
         // Cleanup internal structs.
         if (g_symInitialized) {
             SymCleanup(GetCurrentProcess());
+            g_symInitialized = false;
         }
 #elif defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
         // Restore back original signal handlers if they were set.

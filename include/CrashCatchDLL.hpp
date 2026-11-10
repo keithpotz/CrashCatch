@@ -119,7 +119,17 @@ CRASHCATCH_API int crashcatch_init(const CrashCatch_Config* config);
 CRASHCATCH_API int crashcatch_enable(void);
 
 /**
- * Returns the CrashCatch version string, e.g. "1.5.0".
+ * Uninstall the crash handler and restore whatever handler was active before
+ * crashcatch_init / crashcatch_enable, and release DbgHelp symbol state (Windows).
+ * Returns 1 on success, 0 if CrashCatch was not initialized.
+ *
+ * Example:
+ *   crashcatch_shutdown();
+ */
+CRASHCATCH_API int crashcatch_shutdown(void);
+
+/**
+ * Returns the CrashCatch version string, e.g. "1.6.0".
  */
 CRASHCATCH_API const char* crashcatch_version(void);
 
@@ -205,8 +215,8 @@ CRASHCATCH_API int crashcatch_init(const CrashCatch_Config* cfg) {
     return CrashCatch::initialize(cppConfig) ? 1 : 0;
 }
 
-CRASHCATCH_API int crashcatch_shutdown() {
-    return CrashCatch::shutdown() ? 1 : 0;   
+CRASHCATCH_API int crashcatch_shutdown(void) {
+    return CrashCatch::shutdown() ? 1 : 0;
 }
 
 CRASHCATCH_API int crashcatch_enable(void) {
@@ -214,7 +224,7 @@ CRASHCATCH_API int crashcatch_enable(void) {
 }
 
 CRASHCATCH_API const char* crashcatch_version(void) {
-    return "1.5.0";
+    return "1.6.0";
 }
 
 #ifdef __cplusplus

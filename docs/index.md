@@ -57,7 +57,9 @@ Most crash reporting solutions for C++ require heavyweight SDKs, mandatory cloud
 |---------|-----------|--------------------------|
 | Windows | ✅ Yes    | `SetUnhandledExceptionFilter` + MiniDump + StackWalk64 |
 | Linux   | ✅ Yes    | POSIX signals + `backtrace()` + `fork()` for safe I/O |
-| macOS   | 🚧 Planned | POSIX + Mach exceptions |
+| macOS   | ✅ Yes (Intel & Apple Silicon) | POSIX signals + `backtrace()` + `fork()` for safe I/O; file/line via `atos` (optional) |
+
+> **macOS notes:** See [macOS Support](macos.md) for details. Message boxes and Mach exception interception are not yet implemented. File/line numbers require Xcode Command Line Tools (`atos`) and debug symbols; frames fall back to `module symbol + offset` without them. On Apple Silicon, integer divide-by-zero does not raise `SIGFPE` (ARM64 doesn't trap on it in hardware).
 
 ---
 
@@ -169,15 +171,15 @@ Explore working examples in the GitHub repo:
 ## 🛠 Features
 
 - ✅ **Header-only** single `.hpp`, no external dependencies
-- ✅ **Cross-platform** Windows & Linux support out of the box
+- ✅ **Cross-platform** Windows, Linux & macOS support out of the box
 - ✅ **Accurate crash-site stack traces** Windows stack walk uses `ep->ContextRecord`, not the handler frame *(v1.4.0)*
-- ✅ **Async-signal-safe Linux handler** uses `fork()` so heap corruption can't deadlock the handler *(v1.4.0)*
+- ✅ **Async-signal-safe Linux/macOS handler** uses `fork()` so heap corruption can't deadlock the handler *(v1.4.0)*
 - ✅ **Callbacks fire after files are written** safe to read or upload from `onCrash` / `onCrashUpload` *(v1.4.0)*
 - ✅ **Thread-safe timestamps** `localtime_s` / `localtime_r` *(v1.4.0)*
-- ✅ **Automatic Crash Capture** via `SetUnhandledExceptionFilter` (Windows) or POSIX signals (Linux)
+- ✅ **Automatic Crash Capture** via `SetUnhandledExceptionFilter` (Windows) or POSIX signals (Linux & macOS)
 - ✅ **Crash Context Info** includes executable path, build config, version, and notes
-- ✅ **Crash Reporting** `.dmp` (Windows) and `.txt` (Windows & Linux) crash files
-- ✅ **Symbol Resolution** `SymFromAddr` + file/line info (Windows), demangled symbols (Linux)
+- ✅ **Crash Reporting** `.dmp` (Windows) and `.txt` (Windows, Linux & macOS) crash files
+- ✅ **Symbol Resolution** `SymFromAddr` + file/line info (Windows), demangled symbols (Linux & macOS), optional file/line via `atos` (macOS)
 - ✅ **`onCrash` Callback** run custom cleanup or logging with full crash context
 - ✅ **`onCrashUpload` Hook** pass report data to your custom uploader
 - ✅ **`includeStackTrace` flag** suppress stack trace output when not needed *(v1.3.0)*
@@ -193,6 +195,7 @@ Explore working examples in the GitHub repo:
 - C++17 or later (or C++11/C++98/C via `CrashCatchDLL.hpp`)
 - **Windows**: MSVC (Visual Studio 2019+) or MinGW
 - **Linux**: GCC or Clang with `-rdynamic` for stack traces
+- **macOS**: Clang via Xcode Command Line Tools (`xcode-select --install`); file/line resolution also needs `atos` (included) and debug symbols
 
 ---
 
@@ -208,7 +211,10 @@ Explore working examples in the GitHub repo:
 - [x] Async-signal-safe Linux crash handler
 - [x] Thread-safe timestamps
 - [x] vcpkg and Conan package registry support
-- [ ] macOS support (POSIX + Mach exceptions)
+- [x] macOS support POSIX signals, stack traces, file/line via `atos` *(v1.6.0)*
+- [x] `shutdown()` restores previous handlers and releases symbol state *(v1.6.0)*
+- [ ] macOS Mach exception interception
+- [ ] macOS message box support
 
 ---
 

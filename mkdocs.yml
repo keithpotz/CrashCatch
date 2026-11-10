@@ -1,6 +1,6 @@
 site_name: CrashCatch
 site_url: https://keithpotz.github.io/CrashCatch
-site_description: A cross-platform, single-header C++ crash reporting library for Windows and Linux.
+site_description: A cross-platform, single-header C++ crash reporting library for Windows, Linux and macOS.
 repo_url: https://github.com/keithpotz/CrashCatch
 theme:
   name: material
@@ -24,6 +24,7 @@ nav:
   - Home: index.md
   - Quick Start: quickstart.md
   - Linux Support: linux.md
+  - macOS Support: macos.md
   - CMake Integration: cmake.md
   - Examples: examples.md
   - Screenshots: screenshots.md

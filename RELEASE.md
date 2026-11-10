@@ -1,116 +1,79 @@
-# CrashCatch v1.4.0 Release Notes
+# CrashCatch v1.6.0 Release Notes
 
-**Released:** 2026-03-20
+**Released:** Unreleased
 
-This release is a correctness-focused update. No public API has changed existing code compiles and runs without modification. All changes are internal fixes to long-standing bugs in the crash handling implementation.
+This release adds macOS support and a `shutdown()` API for clean teardown, along with a set of robustness fixes from production usage. Existing code compiles and runs without modification.
 
 ---
 
 ## What Changed
 
-### Windows: Stack trace now shows the actual crash location
+### macOS support
 
-Previously, `writeCrashLog` called `RtlCaptureContext` from inside the exception handler. This captured the handler's own call stack, meaning frame `[0]` showed internal CrashCatch functions rather than the code that crashed.
+CrashCatch now runs on macOS (Intel and Apple Silicon). It uses the same design as the Linux handler: POSIX signals (`SIGSEGV`, `SIGABRT`, `SIGFPE`, `SIGILL`, `SIGBUS`) are caught, and a `fork()`ed child process writes the `.txt` report and runs your callbacks, so the handler stays safe even if the heap is corrupt.
 
-The Windows exception handler now passes `ep->ContextRecord` (the CPU state frozen at the moment of the fault) directly into the stack walker. Frame `[0]` now correctly identifies the crashing function, file, and line number.
+Stack traces use `backtrace()` with demangled C++ symbols. If Xcode Command Line Tools are installed and the binary has debug symbols, file and line numbers are resolved with a single batched `atos` call; otherwise frames fall back to `module symbol + offset`.
 
-**Before:**
 ```text
 Stack Trace:
-  [0]: writeCrashLog
-  [1]: UnhandledExceptionHandler
-  [2]: RtlDispatchException
-  ...
+  [0]: MyApp crashFunction() + 24 (main.cpp:12)
+  [1]: MyApp main + 40 (main.cpp:20)
+  [2]: dyld start + 6076
 ```
 
-**After:**
-```text
-Stack Trace:
-  [0]: MyApp::GameLoop (src\game.cpp:142)
-  [1]: main (src\main.cpp:28)
-  [2]: invoke_main (exe_common.inl:79)
-  ...
+Not yet implemented on macOS: the crash message box and Mach exception interception. On Apple Silicon, integer divide-by-zero does not raise `SIGFPE` (ARM64 doesn't trap on it in hardware).
+
+---
+
+### New: `CrashCatch::shutdown()`
+
+`initialize()` replaces the process-wide crash handler. There was previously no way to undo that, and the DbgHelp symbol state loaded at startup was never released, which shows up as leaks in tools such as Valgrind.
+
+`shutdown()` restores whatever handler was installed before `initialize()` (the unhandled-exception filter on Windows, the five signal handlers on Linux/macOS) and calls `SymCleanup` on Windows.
+
+```cpp
+CrashCatch::initialize(config);
+// ... your app ...
+CrashCatch::shutdown();
 ```
 
----
+C API users get the same thing through `crashcatch_shutdown()`.
 
-### Callbacks now fire after crash files are written
-
-`onCrash` and `onCrashUpload` previously received file paths before those files existed on disk. Any code inside the callback that tried to read, parse, or upload the crash report would fail silently or open an empty file.
-
-Both callbacks now fire after all files are fully written and closed. The file paths in `CrashContext` are guaranteed to be readable when either callback is invoked.
+`shutdown()` is safe to call more than once, or without a prior `initialize()`: in that case it does nothing and returns `false`, rather than overwriting the application's own handlers.
 
 ---
 
-### Linux signal handler is now async-signal-safe
+### `initialize()` can be called again to change configuration
 
-Calling heap-allocating functions (`std::string`, `std::ofstream`, `malloc`, `backtrace_symbols`, `abi::__cxa_demangle`) directly from a POSIX signal handler is undefined behavior. If the crash occurred mid-`malloc` (e.g. heap corruption), the handler would deadlock.
-
-The Linux signal handler now uses `fork()`. The child process performs all file I/O and executes callbacks it is safe to use the heap there. The parent calls `_exit()` immediately. This is the same pattern used by Google's Crashpad and Breakpad.
+Calling `initialize()` a second time used to install the handlers again. Doing so recorded CrashCatch's own handler as the "previous" one, so a later `shutdown()` could never restore the application's original handler. A second call now only updates the configuration.
 
 ---
 
-### Linux: Demangled symbols now actually demangle
+### Windows: crash dump is no longer locked while the dialog is open
 
-`backtrace_symbols()` returns full strings like `./myapp(_Z3foov+0x10) [0x7f...]`. The previous `demangle()` function passed the entire string to `abi::__cxa_demangle`, which expects a raw mangled name and always returned the original string unchanged.
-
-The mangled symbol is now extracted from between `(` and `+` before demangling, producing readable output:
-
-**Before:**
-```text
-  [0]: ./myapp(_Z8myMethodv+0x42) [0x401234]
-```
-
-**After:**
-```text
-  [0]: ./myapp(myMethod()+0x42) [0x401234]
-```
+With `showCrashDialog` enabled, the message box says where the `.dmp` was written, but the file was still held open with exclusive access until the dialog was dismissed. The dump is now closed immediately after it is written.
 
 ---
 
-### Thread-safe timestamps
+### Windows: symbol buffer alignment
 
-`std::localtime` returns a pointer to a shared static struct and is not thread-safe. A crash on a background thread while the main thread was also formatting a timestamp could produce a corrupted timestamp string.
-
-Replaced with `localtime_s` (Windows) and `localtime_r` (Linux), both of which write into a caller-supplied struct.
-
----
-
-### Symbol loading moved to startup
-
-`SymInitialize` was previously called inside the exception handler at crash time. This is slow (~100ms on large binaries) and will fail if another part of the application has already initialized DbgHelp symbols.
-
-`SymInitialize` is now called once during `CrashCatch::initialize()`, so symbols are loaded and ready before any crash occurs.
-
----
-
-### Directory creation failures are now handled
-
-If `create_directories` failed (bad path, missing permissions), the error was silently ignored and subsequent file writes would fail with no diagnostic. The `std::error_code` overload is now used if the output directory cannot be created, the handler exits early rather than attempting to write to an invalid path.
+The buffer passed to `SymFromAddr` was a plain `char` array cast to `SYMBOL_INFO*`, which is undefined behavior if the array is not suitably aligned. It is now declared `alignas(SYMBOL_INFO)`.
 
 ---
 
 ## Internal Improvements
 
-- `CrashContext` is now constructed once per crash and shared between `onCrash` and `onCrashUpload`, rather than being constructed twice.
-- Version string in `CrashCatch.hpp` header comment corrected to match the release version.
-
----
-
-## New Tests
-
-Two tests have been added to `tests/` to permanently verify the corrected behavior:
-
-| Test | Verifies |
-|---|---|
-| `test_callback_order` | Log file exists on disk when `onCrash` fires |
-| `test_stack_context` | Stack trace frame `[0]` is the crash-site function, not a handler frame |
+- Cleanup of `__cxa_demangle` results, `backtrace_symbols` arrays, the `atos` pipe, and the dump file handle now goes through a small RAII helper (`details::AtScopeExit`), so no return path can skip it.
+- `GetModuleFileNameA` failure is handled; the executable path is reported as `(unknown)` instead of reading an uninitialized buffer.
+- `user32.lib` is auto-linked on Windows (needed by `MessageBoxW`), alongside `dbgHelp.lib`.
+- macOS `demangle()` no longer throws or loops on malformed backtrace lines, and the `atos` command line is built correctly (`atos -p <pid>`).
+- `crashcatch_version()` returns `"1.6.0"`.
 
 ---
 
 ## Upgrading
 
-No changes to the public API. Replace `CrashCatch.hpp` (and `CrashCatchDLL.hpp` if used) with the v1.4.0 versions. Recompile. No code changes required.
+No breaking changes. Replace `CrashCatch.hpp` (and `CrashCatchDLL.hpp` if used) with the v1.6.0 versions and recompile. Calling `CrashCatch::shutdown()` before exit is optional but recommended if you run leak checkers.
 
 ---
 
@@ -119,8 +82,14 @@ No changes to the public API. Replace `CrashCatch.hpp` (and `CrashCatchDLL.hpp` 
 | Platform | Status |
 |---|---|
 | Windows 10 / 11 (x64, x86) | Tested |
-| Linux (GCC, Clang) | Fixes applied; signal-safety fix verified by code review — runtime testing on Linux recommended |
-| macOS | Not yet supported |
+| Linux (GCC, Clang) | Builds in CI |
+| macOS (Intel, Apple Silicon) | Supported; reported working on macOS 27 (AArch64) |
+
+---
+
+## Credits
+
+- `shutdown()`, RAII cleanup, symbol-buffer alignment, and `GetModuleFileNameA` handling via PR #17.
 
 ---
 
