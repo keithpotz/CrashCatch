@@ -21,8 +21,8 @@ License: MIT
 
 #if defined(_WIN32)
 #define CRASHCATCH_PLATFORM_WINDOWS
-#include <windows.h>
-#include <dbgHelp.h>
+#include <Windows.h>
+#include <DbgHelp.h>
 #pragma comment(lib, "dbgHelp.lib") //Auto-link debugging support library
 #elif defined(__linux__)
 #define CRASHCATCH_PLATFORM_LINUX
@@ -82,7 +82,43 @@ namespace CrashCatch {
     // Set by UnhandledExceptionHandler so writeCrashLog can walk the crash-site stack,
     // not the handler's own stack. Only valid during crash handling.
     inline CONTEXT* g_crashSiteContext = nullptr;
+    // Set by initialize to flag SymInitialize succeeded or not. If true, need to cleanup
+    // by SymCleanup.
+    inline bool g_symInitialized = false;
+    // Top level exception filter may already be set. Hold its value to restore back
+    // when shutdown.
+    inline LPTOP_LEVEL_EXCEPTION_FILTER g_previousTopLevelExceptionFilter = nullptr;
+#elif defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
+    // Define a signal handler function pointer.
+    using signalHandler_t = void(*)(int);
+    // Hold previous signal handlers to restore back when shutdown.
+    inline signalHandler_t g_previousSIGSEGVHandler = nullptr;
+    inline signalHandler_t g_previousSIGABRTHandler = nullptr;
+    inline signalHandler_t g_previousSIGFPEHandler = nullptr;
+    inline signalHandler_t g_previousSIGILLHandler = nullptr;
+    inline signalHandler_t g_previousSIGBUSHandler = nullptr;
 #endif
+
+    namespace details {
+
+        template<typename F>
+        class AtScopeExit {
+        public:
+            explicit AtScopeExit(F&& lambda)
+                : m_lambda{std::move(lambda)} {}
+            ~AtScopeExit() { m_lambda(); }
+
+            // Prevent default copy and move ctors and assigment operators.
+            AtScopeExit(const AtScopeExit&) = delete;
+            AtScopeExit& operator=(const AtScopeExit&) = delete;
+            AtScopeExit(AtScopeExit&&) = delete;
+            AtScopeExit& operator=(AtScopeExit&&) = delete;
+
+        private:
+            F m_lambda;
+        };
+
+    }
 
     // Generate timestamp string (YYYY-MM-DD_HH-MM-SS)
     inline std::string getTimestamp() {
@@ -103,8 +139,10 @@ namespace CrashCatch {
     inline std::string getExecutablePath() {
 #ifdef CRASHCATCH_PLATFORM_WINDOWS
         char buffer[MAX_PATH];
-        GetModuleFileNameA(nullptr, buffer, MAX_PATH);
-        return std::string(buffer);
+        if (GetModuleFileNameA(nullptr, buffer, MAX_PATH)) {
+            return std::string(buffer);
+        }
+        return "(unknown)";
 #elif defined(CRASHCATCH_PLATFORM_LINUX)
         char path[PATH_MAX];
         ssize_t len = readlink("/proc/self/exe", path, sizeof(path) - 1);
@@ -141,14 +179,14 @@ namespace CrashCatch {
             size_t size = 0;
             int status  = 0;
             char* demangled = abi::__cxa_demangle(mangled.c_str(), nullptr, &size, &status);
+            details::AtScopeExit freeDemangled{[=] { free(demangled); }};
+
             if (status == 0 && demangled) {
                 std::string result = sym.substr(0, parenOpen + 1)
                                    + demangled
                                    + sym.substr(plusSign);
-                free(demangled);
                 return result;
             }
-            if (demangled) free(demangled);
         }
         return sym; // return original if no mangled segment found or demangle failed
     }
@@ -217,13 +255,11 @@ namespace CrashCatch {
         int status = 0;
         size_t size = 0;
         char* demangled = abi::__cxa_demangle(symbolStr.c_str(), nullptr, &size, &status);
+        details::AtScopeExit freeDemangled{ [=] { free(demangled); } };
 
         // Demangling was successful...
         if(status == 0)
             symbolStr = std::string(demangled);
-
-        if(demangled)
-            free(demangled);
 
         // Remove from working symbol.
         workingSymbol = workingSymbol.substr(0, lastSpace);
@@ -267,6 +303,8 @@ namespace CrashCatch {
         FILE* pipe = popen(cmd.str().c_str(), "r");
         if (!pipe) return results;
 
+        details::AtScopeExit closePipe{ [=] { pclose(pipe); } };
+
         char lineBuf[1024];
         size_t idx = 0;
         while (idx < results.size() && fgets(lineBuf, sizeof(lineBuf), pipe)){
@@ -283,7 +321,6 @@ namespace CrashCatch {
             }
             ++idx;
         }
-        pclose(pipe);
         return results;
     }
 #endif
@@ -368,7 +405,7 @@ namespace CrashCatch {
 #endif
             // Symbol buffer
             const int MAX_SYM_NAME_LEN = 256;
-            char symBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME_LEN * sizeof(char)];
+            alignas(SYMBOL_INFO) char symBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME_LEN * sizeof(char)];
             SYMBOL_INFO* symbol = reinterpret_cast<SYMBOL_INFO*>(symBuffer);
             symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
             symbol->MaxNameLen   = MAX_SYM_NAME_LEN;
@@ -411,6 +448,7 @@ namespace CrashCatch {
             void* callstack[128];
             int frames = backtrace(callstack, 128);
             char** symbols = backtrace_symbols(callstack, frames);
+            details::AtScopeExit freeSymbols{[=] { free(symbols); }};
             log << "\nStack Trace:\n";
 #ifdef CRASHCATCH_PLATFORM_MACOS
             //Batch-resolve file:line for every frame in one atos call, rather 
@@ -428,11 +466,8 @@ namespace CrashCatch {
 #endif        
                 log << "\n";
             }
-            free(symbols);
         }
 #endif
-
-        log.close();
     }
 
 #ifdef CRASHCATCH_PLATFORM_WINDOWS
@@ -460,9 +495,10 @@ namespace CrashCatch {
 
         HANDLE hFile = CreateFileW(dumpFilepathStr.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (hFile != INVALID_HANDLE_VALUE) {
+            details::AtScopeExit closeFile{[=]() { CloseHandle(hFile); }};
+
             MINIDUMP_EXCEPTION_INFORMATION dumpInfo = { GetCurrentThreadId(), ep, FALSE };
             MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, MiniDumpWithDataSegs, &dumpInfo, nullptr, nullptr);
-            CloseHandle(hFile);
 
             if (globalConfig.enableTextLog) {
                 writeCrashLog(logPath, timestamp);
@@ -539,14 +575,47 @@ namespace CrashCatch {
         globalConfig = config;
 #ifdef CRASHCATCH_PLATFORM_WINDOWS
         // Load symbols now so they're ready when a crash occurs
-        SymInitialize(GetCurrentProcess(), nullptr, TRUE);
-        SetUnhandledExceptionFilter(UnhandledExceptionHandler);
+        g_symInitialized = !!SymInitialize(GetCurrentProcess(), nullptr, TRUE);
+        // The exception handler specified by lpTopLevelExceptionFilter is executed
+        // in the context of the thread that caused the fault. It means certain
+        // exceptions like out of memory or invalid stack have no guarantee to be written.
+        g_previousTopLevelExceptionFilter = SetUnhandledExceptionFilter(UnhandledExceptionHandler);
 #elif defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
-        signal(SIGSEGV, posixSignalHandler);
-        signal(SIGABRT, posixSignalHandler);
-        signal(SIGFPE,  posixSignalHandler);
-        signal(SIGILL,  posixSignalHandler);
-        signal(SIGBUS,  posixSignalHandler);
+        g_previousSIGSEGVHandler = signal(SIGSEGV, posixSignalHandler);
+        g_previousSIGABRTHandler = signal(SIGABRT, posixSignalHandler);
+        g_previousSIGFPEHandler = signal(SIGFPE, posixSignalHandler);
+        g_previousSIGILLHandler = signal(SIGILL, posixSignalHandler);
+        g_previousSIGBUSHandler = signal(SIGBUS, posixSignalHandler);
+#endif
+        return true;
+    }
+
+    // Shutdown CrashCatch
+    inline bool shutdown() {
+        // Do in reverse to initialize order as destructors do.
+#ifdef CRASHCATCH_PLATFORM_WINDOWS
+        SetUnhandledExceptionFilter(g_previousTopLevelExceptionFilter);
+        // Cleanup internal structs.
+        if (g_symInitialized) {
+            SymCleanup(GetCurrentProcess());
+        }
+#elif defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
+        // Restore back original signal handlers if they were set.
+        if (g_previousSIGBUSHandler != SIG_ERR) {
+            signal(SIGBUS, g_previousSIGBUSHandler);
+        }
+        if (g_previousSIGILLHandler != SIG_ERR) {
+            signal(SIGILL, g_previousSIGILLHandler);
+        }
+        if (g_previousSIGFPEHandler != SIG_ERR) {
+            signal(SIGFPE, g_previousSIGFPEHandler);
+        }
+        if (g_previousSIGABRTHandler != SIG_ERR) {
+            signal(SIGABRT, g_previousSIGABRTHandler);
+        }
+        if (g_previousSIGSEGVHandler != SIG_ERR) {
+            signal(SIGSEGV, g_previousSIGSEGVHandler);
+        }
 #endif
         return true;
     }

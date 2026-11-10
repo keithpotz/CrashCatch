@@ -19,5 +19,7 @@ int main() {
 
     int* ptr = nullptr;
     *ptr = 42; // Simulated crash
+
+    CrashCatch::shutdown();
     return 0;
 }

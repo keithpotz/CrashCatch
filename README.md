@@ -103,8 +103,12 @@ int main() {
         uploadToMyServer(ctx.dumpFilePath, ctx.logFilePath);
     };
 
+    // Initialize.
     CrashCatch::initialize(config);
     // your app code
+
+    // Cleanup internal state.
+    CrashCath::shutdown();
 }
 ```
 
