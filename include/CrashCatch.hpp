@@ -36,7 +36,15 @@ License: MIT
 // Common POSIX include across both macOS and Linux.
 #if defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
 #include <signal.h>
+// backtrace()/backtrace_symbols() come from <execinfo.h>, which glibc and macOS
+// provide but musl libc (Alpine and other musl-based distros) does not. Without
+// it CrashCatch still builds and writes crash reports, just without a stack trace.
+// Define CRASHCATCH_NO_BACKTRACE to force this off, e.g. if a standalone
+// libexecinfo header is installed but you don't want to link -lexecinfo.
+#if !defined(CRASHCATCH_NO_BACKTRACE) && __has_include(<execinfo.h>)
 #include <execinfo.h>
+#define CRASHCATCH_HAS_BACKTRACE
+#endif
 #include <unistd.h>
 #include <limits.h>
 #include <cxxabi.h>
@@ -454,13 +462,21 @@ namespace CrashCatch {
         }
 #endif
 
-#if defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
+#if (defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)) && !defined(CRASHCATCH_HAS_BACKTRACE)
+        if (globalConfig.includeStackTrace) {
+            log << "\nStack Trace:\n  (unavailable: backtrace() is not supported by this C library)\n";
+        }
+#elif defined(CRASHCATCH_PLATFORM_LINUX) || defined(CRASHCATCH_PLATFORM_MACOS)
         if (globalConfig.includeStackTrace) {
             void* callstack[128];
             int frames = backtrace(callstack, 128);
             char** symbols = backtrace_symbols(callstack, frames);
             details::AtScopeExit freeSymbols{[=] { free(symbols); }};
             log << "\nStack Trace:\n";
+            if (!symbols) {
+                frames = 0; // backtrace_symbols failed (out of memory); nothing to print
+                log << "  (unavailable: backtrace_symbols() failed)\n";
+            }
 #ifdef CRASHCATCH_PLATFORM_MACOS
             //Batch-resolve file:line for every frame in one atos call, rather 
             // than shelling out once per fram.

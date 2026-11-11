@@ -153,3 +153,4 @@ g++ -std=c++17 main.cpp -rdynamic -o myapp
 - Crash logs are `.txt` only on Linux  `.dmp` MiniDump format is Windows only
 - Stack traces may not show full function names without `-rdynamic`
 - GUI message boxes are not supported on Linux
+- **musl-based distros (Alpine, etc.):** musl libc has no `<execinfo.h>`, so there is no `backtrace()`. CrashCatch detects this at compile time and still builds and writes crash reports and runs callbacks, but the stack trace section reads `(unavailable: backtrace() is not supported by this C library)`. If you have a standalone `libexecinfo` installed, CrashCatch picks it up automatically and you must link it (`-lexecinfo`); define `CRASHCATCH_NO_BACKTRACE` to turn it off instead.
